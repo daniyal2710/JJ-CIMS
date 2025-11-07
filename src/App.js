@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Clock, Search, Plus, X, Menu, FileText, BarChart3, Settings, Bell } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2 } from 'lucide-react';
 
 const JohnnyCMS = () => {
   const [currentView, setCurrentView] = useState('login');
