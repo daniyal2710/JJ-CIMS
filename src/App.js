@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
- import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3 } from 'lucide-react';
 const JohnnyCMS = () => {
   const [currentView, setCurrentView] = useState('login');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
