@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2, X, Loader } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2, X, Loader, Download, TrendingUp, TrendingDown } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 const JohnnyCMS = () => {
   const [currentView, setCurrentView] = useState('login');
@@ -26,14 +30,12 @@ const JohnnyCMS = () => {
     status: 'all'
   });
 
-  // Modal states
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({ username: '', password: '', email: '', role: 'user', branch: '' });
   const [newCategory, setNewCategory] = useState('');
 
-  // Load data on component mount
   useEffect(() => {
     if (isLoggedIn) {
       loadComplaints();
@@ -44,7 +46,6 @@ const JohnnyCMS = () => {
     }
   }, [isLoggedIn, currentUser]);
 
-  // Load Users from Database
   const loadUsers = async () => {
     try {
       const { data, error } = await supabase
@@ -56,11 +57,9 @@ const JohnnyCMS = () => {
       setUsers(data || []);
     } catch (err) {
       console.error('Error loading users:', err);
-      setError('Failed to load users');
     }
   };
 
-  // Load Categories from Database
   const loadCategories = async () => {
     try {
       const { data, error } = await supabase
@@ -72,11 +71,9 @@ const JohnnyCMS = () => {
       setCategories(data?.map(cat => cat.name) || []);
     } catch (err) {
       console.error('Error loading categories:', err);
-      setError('Failed to load categories');
     }
   };
 
-  // Load Complaints from Database
   const loadComplaints = async () => {
     try {
       setLoading(true);
@@ -102,13 +99,11 @@ const JohnnyCMS = () => {
       setComplaints(formattedComplaints);
     } catch (err) {
       console.error('Error loading complaints:', err);
-      setError('Failed to load complaints');
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Login
   const handleLogin = async () => {
     if (!loginData.username || !loginData.password) {
       setError('Please enter username and password');
@@ -133,7 +128,7 @@ const JohnnyCMS = () => {
       
       setCurrentUser(data);
       setIsLoggedIn(true);
-      setCurrentView('dashboard');
+      setCurrentView('analytics');
     } catch (err) {
       console.error('Login error:', err);
       setError('Login failed. Please try again.');
@@ -142,7 +137,6 @@ const JohnnyCMS = () => {
     }
   };
 
-  // Handle Add Complaint
   const handleAddComplaint = async () => {
     if (!newComplaint.category || !newComplaint.comments) {
       setError('Please fill in all required fields');
@@ -153,7 +147,7 @@ const JohnnyCMS = () => {
       setLoading(true);
       setError('');
       
-      const {error } = await supabase
+      const { error } = await supabase
         .from('complaints')
         .insert([{
           department: newComplaint.department,
@@ -178,7 +172,6 @@ const JohnnyCMS = () => {
     }
   };
 
-  // Handle Status Change
   const handleStatusChange = async (complaintId, newStatus) => {
     try {
       const { error } = await supabase
@@ -187,7 +180,6 @@ const JohnnyCMS = () => {
         .eq('id', complaintId);
       
       if (error) throw error;
-      
       await loadComplaints();
     } catch (err) {
       console.error('Error updating status:', err);
@@ -195,7 +187,6 @@ const JohnnyCMS = () => {
     }
   };
 
-  // Handle Add/Edit User
   const handleAddUser = async () => {
     if (!newUser.username || !newUser.password || !newUser.email) {
       setError('Please fill in all required fields');
@@ -245,7 +236,6 @@ const JohnnyCMS = () => {
     }
   };
 
-  // Handle Delete User
   const handleDeleteUser = async (userId) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
 
@@ -257,7 +247,6 @@ const JohnnyCMS = () => {
         .eq('id', userId);
       
       if (error) throw error;
-      
       await loadUsers();
     } catch (err) {
       console.error('Error deleting user:', err);
@@ -267,7 +256,6 @@ const JohnnyCMS = () => {
     }
   };
 
-  // Handle Add Category
   const handleAddCategory = async () => {
     if (!newCategory || categories.includes(newCategory)) {
       setError('Category already exists or is empty');
@@ -283,7 +271,6 @@ const JohnnyCMS = () => {
         .insert([{ name: newCategory }]);
       
       if (error) throw error;
-      
       await loadCategories();
       setNewCategory('');
       setShowCategoryModal(false);
@@ -295,7 +282,6 @@ const JohnnyCMS = () => {
     }
   };
 
-  // Handle Delete Category
   const handleDeleteCategory = async (categoryName) => {
     if (!window.confirm('Are you sure you want to delete this category?')) return;
 
@@ -307,7 +293,6 @@ const JohnnyCMS = () => {
         .eq('name', categoryName);
       
       if (error) throw error;
-      
       await loadCategories();
     } catch (err) {
       console.error('Error deleting category:', err);
@@ -317,12 +302,149 @@ const JohnnyCMS = () => {
     }
   };
 
+  // Analytics Functions
+  const getAnalyticsData = () => {
+    const now = new Date();
+    const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const recentComplaints = complaints.filter(c => new Date(c.created_at) >= lastWeek);
+    const oldComplaints = complaints.filter(c => new Date(c.created_at) < lastWeek && new Date(c.created_at) >= lastMonth);
+
+    const percentageChange = oldComplaints.length > 0 
+      ? ((recentComplaints.length - oldComplaints.length) / oldComplaints.length * 100).toFixed(1)
+      : 0;
+
+    return {
+      total: complaints.length,
+      open: complaints.filter(c => c.status === 'Open').length,
+      pending: complaints.filter(c => c.status === 'Pending').length,
+      parking: complaints.filter(c => c.status === 'Parking').length,
+      resolved: complaints.filter(c => c.status === 'Resolved').length,
+      recentCount: recentComplaints.length,
+      percentageChange: parseFloat(percentageChange)
+    };
+  };
+
+  const getStatusChartData = () => {
+    const stats = getAnalyticsData();
+    return [
+      { name: 'Open', value: stats.open, color: '#EAB308' },
+      { name: 'Pending', value: stats.pending, color: '#3B82F6' },
+      { name: 'Parking', value: stats.parking, color: '#A855F7' },
+      { name: 'Resolved', value: stats.resolved, color: '#10B981' }
+    ];
+  };
+
+  const getCategoryChartData = () => {
+    const categoryCounts = {};
+    complaints.forEach(c => {
+      categoryCounts[c.category] = (categoryCounts[c.category] || 0) + 1;
+    });
+    
+    return Object.entries(categoryCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  };
+
+  const getWeeklyTrendData = () => {
+    const days = 7;
+    const data = [];
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      
+      const dayComplaints = complaints.filter(c => {
+        const cDate = new Date(c.created_at);
+        return cDate.toDateString() === date.toDateString();
+      });
+      
+      data.push({
+        date: dateStr,
+        count: dayComplaints.length,
+        resolved: dayComplaints.filter(c => c.status === 'Resolved').length
+      });
+    }
+    
+    return data;
+  };
+
+  const getBranchPerformance = () => {
+    const branchStats = {};
+    complaints.forEach(c => {
+      if (!branchStats[c.branch]) {
+        branchStats[c.branch] = { total: 0, resolved: 0 };
+      }
+      branchStats[c.branch].total++;
+      if (c.status === 'Resolved') {
+        branchStats[c.branch].resolved++;
+      }
+    });
+    
+    return Object.entries(branchStats)
+      .map(([branch, stats]) => ({
+        branch,
+        total: stats.total,
+        resolved: stats.resolved,
+        rate: ((stats.resolved / stats.total) * 100).toFixed(1)
+      }))
+      .sort((a, b) => b.total - a.total);
+  };
+
+  const exportToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(complaints.map(c => ({
+      Date: c.date,
+      Department: c.department,
+      Category: c.category,
+      Comments: c.comments,
+      Status: c.status,
+      Branch: c.branch,
+      'Created By': c.created_by
+    })));
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Complaints');
+    XLSX.writeFile(wb, `JJ_Complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Johnny & Jugnu - Complaints Report', 14, 20);
+    
+    doc.setFontSize(11);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+    
+    const tableData = complaints.map(c => [
+      c.date,
+      c.department,
+      c.category,
+      c.status,
+      c.branch
+    ]);
+    
+    doc.autoTable({
+      startY: 40,
+      head: [['Date', 'Department', 'Category', 'Status', 'Branch']],
+      body: tableData,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [234, 88, 12] }
+    });
+    
+    doc.save(`JJ_Complaints_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   const filteredComplaints = complaints.filter(c => {
     if (filterData.status === 'all') return true;
     return c.status.toLowerCase() === filterData.status;
   });
 
   const statusOptions = ['Open', 'Pending', 'Parking', 'Resolved'];
+  const COLORS = ['#EAB308', '#3B82F6', '#A855F7', '#10B981'];
 
   if (!isLoggedIn) {
     return (
@@ -397,6 +519,8 @@ const JohnnyCMS = () => {
     );
   }
 
+  const analytics = getAnalyticsData();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg sticky top-0 z-50">
@@ -414,18 +538,25 @@ const JohnnyCMS = () => {
             
             <nav className="hidden md:flex items-center space-x-2">
               <button
+                onClick={() => setCurrentView('analytics')}
+                className={`px-4 py-2 rounded-lg transition ${currentView === 'analytics' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+              >
+                <BarChart3 className="inline-block w-4 h-4 mr-2" />
+                Analytics
+              </button>
+              <button
                 onClick={() => setCurrentView('dashboard')}
                 className={`px-4 py-2 rounded-lg transition ${currentView === 'dashboard' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
               >
-                <BarChart3 className="inline-block w-4 h-4 mr-2" />
-                Dashboard
+                <FileText className="inline-block w-4 h-4 mr-2" />
+                Complaints
               </button>
               <button
                 onClick={() => setCurrentView('add')}
                 className={`px-4 py-2 rounded-lg transition ${currentView === 'add' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
               >
                 <Plus className="inline-block w-4 h-4 mr-2" />
-                Add Complaint
+                Add New
               </button>
               {currentUser?.role === 'admin' && (
                 <>
@@ -466,10 +597,168 @@ const JohnnyCMS = () => {
       )}
 
       <main className="max-w-7xl mx-auto p-6">
+        {currentView === 'analytics' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Analytics Dashboard</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={exportToExcel}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Excel
+                </button>
+                <button
+                  onClick={exportToPDF}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Total Complaints</p>
+                  <FileText className="w-8 h-8 text-orange-500" />
+                </div>
+                <p className="text-3xl font-bold text-gray-800 mb-1">{analytics.total}</p>
+                <div className="flex items-center text-sm">
+                  {analytics.percentageChange >= 0 ? (
+                    <TrendingUp className="w-4 h-4 text-red-500 mr-1" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-green-500 mr-1" />
+                  )}
+                  <span className={analytics.percentageChange >= 0 ? 'text-red-500' : 'text-green-500'}>
+                    {Math.abs(analytics.percentageChange)}%
+                  </span>
+                  <span className="text-gray-500 ml-1">vs last week</span>
+                </div>
+              </div>
+              
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-yellow-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Open</p>
+                  <Clock className="w-8 h-8 text-yellow-500" />
+                </div>
+                <p className="text-3xl font-bold text-gray-800 mb-1">{analytics.open}</p>
+                <p className="text-sm text-gray-500">{((analytics.open / analytics.total) * 100).toFixed(1)}% of total</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Pending</p>
+                  <AlertCircle className="w-8 h-8 text-blue-500" />
+                </div>
+                <p className="text-3xl font-bold text-gray-800 mb-1">{analytics.pending}</p>
+                <p className="text-sm text-gray-500">{((analytics.pending / analytics.total) * 100).toFixed(1)}% of total</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Resolved</p>
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                </div>
+                <p className="text-3xl font-bold text-gray-800 mb-1">{analytics.resolved}</p>
+                <p className="text-sm text-gray-500">{((analytics.resolved / analytics.total) * 100).toFixed(1)}% resolution rate</p>
+              </div>
+            </div>
+
+            {/* Charts Row 1 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Status Distribution Pie Chart */}
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaints by Status</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={getStatusChartData()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {getStatusChartData().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Weekly Trend Line Chart */}
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">7-Day Trend</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={getWeeklyTrendData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" style={{fontSize: '12px'}} />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="count" stroke="#EA580C" strokeWidth={2} name="Total" />
+                    <Line type="monotone" dataKey="resolved" stroke="#10B981" strokeWidth={2} name="Resolved" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Charts Row 2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Category Breakdown Bar Chart */}
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Top 10 Categories</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={getCategoryChartData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} style={{fontSize: '11px'}} />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#EA580C" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Branch Performance */}
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Branch Performance</h3>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {getBranchPerformance().map((branch, idx) => (
+                    <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium text-gray-800">{branch.branch}</span>
+                        <span className="text-sm font-semibold text-orange-600">{branch.rate}%</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Total: {branch.total}</span>
+                        <span>Resolved: {branch.resolved}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-500 h-2 rounded-full transition-all" 
+                          style={{width: `${branch.rate}%`}}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {currentView === 'dashboard' && (
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Complaint Overview</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Complaint Management</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
