@@ -444,7 +444,7 @@ const JohnnyCMS = () => {
   });
 
   const statusOptions = ['Open', 'Pending', 'Parking', 'Resolved'];
-  const COLORS = ['#EAB308', '#3B82F6', '#A855F7', '#10B981'];
+  
 
   if (!isLoggedIn) {
     return (
