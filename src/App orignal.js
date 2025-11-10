@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2, X, Loader, Download, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2, X, Loader, Download, TrendingUp, TrendingDown } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import jsPDF from 'jspdf';
@@ -21,15 +21,13 @@ const JohnnyCMS = () => {
   const [newComplaint, setNewComplaint] = useState({
     department: 'IT',
     category: '',
-    comments: '',
-    priority: 'Medium'
+    comments: ''
   });
 
   const [filterData, setFilterData] = useState({
     startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
-    status: 'all',
-    priority: 'all'
+    status: 'all'
   });
 
   const [showUserModal, setShowUserModal] = useState(false);
@@ -88,7 +86,6 @@ const JohnnyCMS = () => {
       
       const formattedComplaints = data?.map(c => ({
         ...c,
-        priority: c.priority || 'Medium',
         date: new Date(c.created_at).toLocaleString('en-US', { 
           month: 'short', 
           day: 'numeric', 
@@ -98,10 +95,6 @@ const JohnnyCMS = () => {
           hour12: true 
         })
       })) || [];
-      
-      // Sort by priority: High -> Medium -> Low
-      const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
-      formattedComplaints.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
       
       setComplaints(formattedComplaints);
     } catch (err) {
@@ -160,7 +153,6 @@ const JohnnyCMS = () => {
           department: newComplaint.department,
           category: newComplaint.category,
           comments: newComplaint.comments,
-          priority: newComplaint.priority,
           status: 'Open',
           branch: currentUser?.branch || 'Unknown',
           created_by: currentUser?.username || 'unknown'
@@ -170,7 +162,7 @@ const JohnnyCMS = () => {
       if (error) throw error;
       
       await loadComplaints();
-      setNewComplaint({ department: 'IT', category: '', comments: '', priority: 'Medium' });
+      setNewComplaint({ department: 'IT', category: '', comments: '' });
       setCurrentView('dashboard');
     } catch (err) {
       console.error('Error adding complaint:', err);
@@ -192,21 +184,6 @@ const JohnnyCMS = () => {
     } catch (err) {
       console.error('Error updating status:', err);
       setError('Failed to update status');
-    }
-  };
-
-  const handlePriorityChange = async (complaintId, newPriority) => {
-    try {
-      const { error } = await supabase
-        .from('complaints')
-        .update({ priority: newPriority, updated_at: new Date().toISOString() })
-        .eq('id', complaintId);
-      
-      if (error) throw error;
-      await loadComplaints();
-    } catch (err) {
-      console.error('Error updating priority:', err);
-      setError('Failed to update priority');
     }
   };
 
@@ -325,20 +302,6 @@ const JohnnyCMS = () => {
     }
   };
 
-  const getPriorityBadge = (priority) => {
-    const styles = {
-      'High': 'bg-red-100 text-red-700 border-red-300',
-      'Medium': 'bg-yellow-100 text-yellow-700 border-yellow-300',
-      'Low': 'bg-green-100 text-green-700 border-green-300'
-    };
-    return styles[priority] || styles['Medium'];
-  };
-
-  const getPriorityIcon = (priority) => {
-    if (priority === 'High') return <AlertTriangle className="w-3 h-3 inline mr-1" />;
-    return null;
-  };
-
   // Analytics Functions
   const getAnalyticsData = () => {
     const now = new Date();
@@ -358,9 +321,6 @@ const JohnnyCMS = () => {
       pending: complaints.filter(c => c.status === 'Pending').length,
       parking: complaints.filter(c => c.status === 'Parking').length,
       resolved: complaints.filter(c => c.status === 'Resolved').length,
-      high: complaints.filter(c => c.priority === 'High').length,
-      medium: complaints.filter(c => c.priority === 'Medium').length,
-      low: complaints.filter(c => c.priority === 'Low').length,
       recentCount: recentComplaints.length,
       percentageChange: parseFloat(percentageChange)
     };
@@ -373,15 +333,6 @@ const JohnnyCMS = () => {
       { name: 'Pending', value: stats.pending, color: '#3B82F6' },
       { name: 'Parking', value: stats.parking, color: '#A855F7' },
       { name: 'Resolved', value: stats.resolved, color: '#10B981' }
-    ];
-  };
-
-  const getPriorityChartData = () => {
-    const stats = getAnalyticsData();
-    return [
-      { name: 'High', value: stats.high, color: '#EF4444' },
-      { name: 'Medium', value: stats.medium, color: '#EAB308' },
-      { name: 'Low', value: stats.low, color: '#10B981' }
     ];
   };
 
@@ -414,8 +365,7 @@ const JohnnyCMS = () => {
       data.push({
         date: dateStr,
         count: dayComplaints.length,
-        resolved: dayComplaints.filter(c => c.status === 'Resolved').length,
-        high: dayComplaints.filter(c => c.priority === 'High').length
+        resolved: dayComplaints.filter(c => c.status === 'Resolved').length
       });
     }
     
@@ -449,7 +399,6 @@ const JohnnyCMS = () => {
       Date: c.date,
       Department: c.department,
       Category: c.category,
-      Priority: c.priority,
       Comments: c.comments,
       Status: c.status,
       Branch: c.branch,
@@ -474,14 +423,13 @@ const JohnnyCMS = () => {
       c.date,
       c.department,
       c.category,
-      c.priority,
       c.status,
       c.branch
     ]);
     
     doc.autoTable({
       startY: 40,
-      head: [['Date', 'Department', 'Category', 'Priority', 'Status', 'Branch']],
+      head: [['Date', 'Department', 'Category', 'Status', 'Branch']],
       body: tableData,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [234, 88, 12] }
@@ -491,13 +439,12 @@ const JohnnyCMS = () => {
   };
 
   const filteredComplaints = complaints.filter(c => {
-    if (filterData.status !== 'all' && c.status.toLowerCase() !== filterData.status) return false;
-    if (filterData.priority !== 'all' && c.priority !== filterData.priority) return false;
-    return true;
+    if (filterData.status === 'all') return true;
+    return c.status.toLowerCase() === filterData.status;
   });
 
   const statusOptions = ['Open', 'Pending', 'Parking', 'Resolved'];
-  const priorityOptions = ['High', 'Medium', 'Low'];
+  
 
   if (!isLoggedIn) {
     return (
@@ -673,10 +620,10 @@ const JohnnyCMS = () => {
             </div>
 
             {/* Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-gray-600 text-sm">Total</p>
+                  <p className="text-gray-600 text-sm">Total Complaints</p>
                   <FileText className="w-8 h-8 text-orange-500" />
                 </div>
                 <p className="text-3xl font-bold text-gray-800 mb-1">{analytics.total}</p>
@@ -689,6 +636,7 @@ const JohnnyCMS = () => {
                   <span className={analytics.percentageChange >= 0 ? 'text-red-500' : 'text-green-500'}>
                     {Math.abs(analytics.percentageChange)}%
                   </span>
+                  <span className="text-gray-500 ml-1">vs last week</span>
                 </div>
               </div>
               
@@ -698,16 +646,7 @@ const JohnnyCMS = () => {
                   <Clock className="w-8 h-8 text-yellow-500" />
                 </div>
                 <p className="text-3xl font-bold text-gray-800 mb-1">{analytics.open}</p>
-                <p className="text-sm text-gray-500">{((analytics.open / analytics.total) * 100).toFixed(1)}%</p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-red-500">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-gray-600 text-sm">High Priority</p>
-                  <AlertTriangle className="w-8 h-8 text-red-500" />
-                </div>
-                <p className="text-3xl font-bold text-gray-800 mb-1">{analytics.high}</p>
-                <p className="text-sm text-gray-500">{((analytics.high / analytics.total) * 100).toFixed(1)}%</p>
+                <p className="text-sm text-gray-500">{((analytics.open / analytics.total) * 100).toFixed(1)}% of total</p>
               </div>
               
               <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
@@ -716,7 +655,7 @@ const JohnnyCMS = () => {
                   <AlertCircle className="w-8 h-8 text-blue-500" />
                 </div>
                 <p className="text-3xl font-bold text-gray-800 mb-1">{analytics.pending}</p>
-                <p className="text-sm text-gray-500">{((analytics.pending / analytics.total) * 100).toFixed(1)}%</p>
+                <p className="text-sm text-gray-500">{((analytics.pending / analytics.total) * 100).toFixed(1)}% of total</p>
               </div>
               
               <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500">
@@ -725,16 +664,16 @@ const JohnnyCMS = () => {
                   <CheckCircle className="w-8 h-8 text-green-500" />
                 </div>
                 <p className="text-3xl font-bold text-gray-800 mb-1">{analytics.resolved}</p>
-                <p className="text-sm text-gray-500">{((analytics.resolved / analytics.total) * 100).toFixed(1)}%</p>
+                <p className="text-sm text-gray-500">{((analytics.resolved / analytics.total) * 100).toFixed(1)}% resolution rate</p>
               </div>
             </div>
 
             {/* Charts Row 1 */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              {/* Status Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Status Distribution Pie Chart */}
               <div className="bg-white p-6 rounded-xl shadow-md">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Status Distribution</h3>
-                <ResponsiveContainer width="100%" height={250}>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaints by Status</h3>
+                <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
                       data={getStatusChartData()}
@@ -755,42 +694,18 @@ const JohnnyCMS = () => {
                 </ResponsiveContainer>
               </div>
 
-              {/* Priority Distribution */}
-              <div className="bg-white p-6 rounded-xl shadow-md">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Priority Distribution</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={getPriorityChartData()}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {getPriorityChartData().map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Weekly Trend */}
+              {/* Weekly Trend Line Chart */}
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">7-Day Trend</h3>
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={getWeeklyTrendData()}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" style={{fontSize: '10px'}} />
+                    <XAxis dataKey="date" style={{fontSize: '12px'}} />
                     <YAxis />
                     <Tooltip />
-                    <Legend wrapperStyle={{fontSize: '11px'}} />
+                    <Legend />
                     <Line type="monotone" dataKey="count" stroke="#EA580C" strokeWidth={2} name="Total" />
-                    <Line type="monotone" dataKey="high" stroke="#EF4444" strokeWidth={2} name="High" />
+                    <Line type="monotone" dataKey="resolved" stroke="#10B981" strokeWidth={2} name="Resolved" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -798,7 +713,7 @@ const JohnnyCMS = () => {
 
             {/* Charts Row 2 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              {/* Category Breakdown */}
+              {/* Category Breakdown Bar Chart */}
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Top 10 Categories</h3>
                 <ResponsiveContainer width="100%" height={300}>
@@ -845,26 +760,14 @@ const JohnnyCMS = () => {
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Complaint Management</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-gray-600 text-sm">Total</p>
+                      <p className="text-gray-600 text-sm">Total Complaints</p>
                       <p className="text-3xl font-bold text-gray-800">{complaints.length}</p>
                     </div>
                     <FileText className="w-10 h-10 text-orange-500" />
-                  </div>
-                </div>
-                
-                <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-red-500">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-600 text-sm">High Priority</p>
-                      <p className="text-3xl font-bold text-gray-800">
-                        {complaints.filter(c => c.priority === 'High').length}
-                      </p>
-                    </div>
-                    <AlertTriangle className="w-10 h-10 text-red-500" />
                   </div>
                 </div>
                 
@@ -942,20 +845,6 @@ const JohnnyCMS = () => {
                     <option value="resolved">Resolved</option>
                   </select>
                 </div>
-
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                  <select
-                    value={filterData.priority}
-                    onChange={(e) => setFilterData({...filterData, priority: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                  >
-                    <option value="all">All Priorities</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
-                </div>
                 
                 <div className="flex items-end">
                   <button 
@@ -978,7 +867,6 @@ const JohnnyCMS = () => {
                     <thead>
                       <tr className="bg-gray-50 border-b">
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Priority</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Department</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Comments</th>
@@ -993,24 +881,6 @@ const JohnnyCMS = () => {
                       {filteredComplaints.map((complaint) => (
                         <tr key={complaint.id} className="border-b hover:bg-gray-50 transition">
                           <td className="px-4 py-3 text-sm text-gray-700">{complaint.date}</td>
-                          <td className="px-4 py-3">
-                            {currentUser?.role === 'admin' ? (
-                              <select
-                                value={complaint.priority}
-                                onChange={(e) => handlePriorityChange(complaint.id, e.target.value)}
-                                className={`px-2 py-1 rounded-full text-xs font-semibold outline-none cursor-pointer border ${getPriorityBadge(complaint.priority)}`}
-                              >
-                                {priorityOptions.map(priority => (
-                                  <option key={priority} value={priority}>{priority}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getPriorityBadge(complaint.priority)}`}>
-                                {getPriorityIcon(complaint.priority)}
-                                {complaint.priority}
-                              </span>
-                            )}
-                          </td>
                           <td className="px-4 py-3 text-sm text-gray-700">{complaint.department}</td>
                           <td className="px-4 py-3 text-sm text-gray-700">{complaint.category}</td>
                           <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">{complaint.comments}</td>
@@ -1090,19 +960,6 @@ const JohnnyCMS = () => {
                       ))}
                     </select>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Priority *</label>
-                    <select
-                      value={newComplaint.priority}
-                      onChange={(e) => setNewComplaint({...newComplaint, priority: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                    >
-                      <option value="Low">🟢 Low - Can wait</option>
-                      <option value="Medium">🟡 Medium - Normal issue</option>
-                      <option value="High">🔴 High - Urgent!</option>
-                    </select>
-                  </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Comments *</label>
@@ -1138,19 +995,14 @@ const JohnnyCMS = () => {
                     <div key={c.id} className="p-3 border border-gray-200 rounded-lg hover:border-orange-300 transition">
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-xs font-semibold text-orange-600">{c.category}</span>
-                        <div className="flex gap-2">
-                          <span className={`px-2 py-1 rounded-full text-xs border ${getPriorityBadge(c.priority)}`}>
-                            {c.priority}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            c.status === 'Open' ? 'bg-yellow-100 text-yellow-700' :
-                            c.status === 'Pending' ? 'bg-blue-100 text-blue-700' :
-                            c.status === 'Parking' ? 'bg-purple-100 text-purple-700' :
-                            'bg-green-100 text-green-700'
-                          }`}>
-                            {c.status}
-                          </span>
-                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          c.status === 'Open' ? 'bg-yellow-100 text-yellow-700' :
+                          c.status === 'Pending' ? 'bg-blue-100 text-blue-700' :
+                          c.status === 'Parking' ? 'bg-purple-100 text-purple-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {c.status}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-700 line-clamp-2">{c.comments}</p>
                       <p className="text-xs text-gray-500 mt-2">{c.date}</p>
