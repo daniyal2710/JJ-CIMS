@@ -7,7 +7,7 @@ import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 const JohnnyCMS = () => {
-  const [currentView, setCurrentView] = useState('login');
+  const [currentView, setCurrentView] = useState('welcome');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [loginData, setLoginData] = useState({ username: '', password: '' });
@@ -16,6 +16,7 @@ const JohnnyCMS = () => {
   
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
   const [complaints, setComplaints] = useState([]);
 
   const [newComplaint, setNewComplaint] = useState({
@@ -79,10 +80,17 @@ const JohnnyCMS = () => {
   const loadComplaints = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from('complaints')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+      
+      // Filter by branch for non-admin users
+      if (currentUser?.role !== 'admin') {
+        query = query.eq('branch', currentUser?.branch);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       
@@ -423,6 +431,23 @@ const JohnnyCMS = () => {
   };
 
   const getBranchPerformance = () => {
+    // For non-admin users, only show their own branch
+    if (currentUser?.role !== 'admin') {
+      const branchComplaints = complaints.filter(c => c.branch === currentUser?.branch);
+      const resolved = branchComplaints.filter(c => c.status === 'Resolved').length;
+      const rate = branchComplaints.length > 0 
+        ? ((resolved / branchComplaints.length) * 100).toFixed(1) 
+        : '0';
+      
+      return [{
+        branch: currentUser?.branch || 'My Branch',
+        total: branchComplaints.length,
+        resolved: resolved,
+        rate: rate
+      }];
+    }
+    
+    // Admin sees all branches
     const branchStats = {};
     complaints.forEach(c => {
       if (!branchStats[c.branch]) {
@@ -498,6 +523,118 @@ const JohnnyCMS = () => {
 
   const statusOptions = ['Open', 'Pending', 'Parking', 'Resolved'];
   const priorityOptions = ['High', 'Medium', 'Low'];
+
+  // Welcome Page
+  if (currentView === 'welcome') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute w-96 h-96 bg-white opacity-10 rounded-full -top-48 -left-48 animate-pulse"></div>
+          <div className="absolute w-96 h-96 bg-white opacity-10 rounded-full -bottom-48 -right-48 animate-pulse delay-1000"></div>
+        </div>
+
+        {/* Login Button at Top Right */}
+        <div className="absolute top-6 right-6 z-20">
+          <button
+            onClick={() => setCurrentView('login')}
+            className="px-8 py-3 bg-white text-orange-600 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300"
+          >
+            Login
+          </button>
+        </div>
+
+        {/* Main Content */}
+        <div className="relative z-10 text-center">
+          {/* 3D Logo */}
+          <div className="mb-8 transform hover:scale-110 transition-transform duration-500">
+            <div className="inline-block relative">
+              <div className="absolute inset-0 bg-white opacity-20 blur-3xl rounded-full"></div>
+              <div className="relative bg-white p-8 rounded-full shadow-2xl">
+                <div className="text-orange-600 font-bold text-6xl" style={{
+                  textShadow: '4px 4px 8px rgba(0,0,0,0.3)'
+                }}>
+                  J&J
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3D Welcome Text */}
+          <h1 className="text-white mb-4" style={{
+            fontSize: 'clamp(2rem, 8vw, 5rem)',
+            fontWeight: '900',
+            textShadow: '0 10px 30px rgba(0,0,0,0.5), 0 0 40px rgba(255,255,255,0.3)',
+            transform: 'perspective(500px) rotateX(5deg)',
+            letterSpacing: '2px'
+          }}>
+            Welcome to
+          </h1>
+
+          <h2 className="text-white mb-3" style={{
+            fontSize: 'clamp(2.5rem, 10vw, 6rem)',
+            fontWeight: '900',
+            background: 'linear-gradient(to bottom, #fff 0%, #fef3c7 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            textShadow: '0 15px 35px rgba(0,0,0,0.6)',
+            transform: 'perspective(800px) rotateX(10deg)',
+            letterSpacing: '3px',
+            lineHeight: '1.2'
+          }}>
+            Johnny & Jugnu
+          </h2>
+
+          <h3 className="text-white text-4xl md:text-6xl font-bold mb-8" style={{
+            textShadow: '0 8px 25px rgba(0,0,0,0.5), 0 0 30px rgba(255,255,255,0.2)',
+            transform: 'perspective(600px) rotateX(8deg)',
+            letterSpacing: '8px'
+          }}>
+            CIMS
+          </h3>
+
+          <p className="text-white text-xl md:text-2xl font-light mb-12" style={{
+            textShadow: '0 4px 15px rgba(0,0,0,0.4)',
+            letterSpacing: '2px'
+          }}>
+            Complaint & Issue Management System
+          </p>
+
+          {/* CTA Button */}
+          <button
+            onClick={() => setCurrentView('login')}
+            className="px-12 py-5 bg-white text-orange-600 rounded-full font-bold text-2xl shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 animate-bounce"
+          >
+            Get Started →
+          </button>
+
+          {/* Features Pills */}
+          <div className="mt-16 flex flex-wrap justify-center gap-4">
+            <div className="px-6 py-3 bg-white bg-opacity-20 backdrop-blur-md rounded-full text-white font-semibold">
+              ⚡ Real-time Tracking
+            </div>
+            <div className="px-6 py-3 bg-white bg-opacity-20 backdrop-blur-md rounded-full text-white font-semibold">
+              📊 Advanced Analytics
+            </div>
+            <div className="px-6 py-3 bg-white bg-opacity-20 backdrop-blur-md rounded-full text-white font-semibold">
+              🎯 Priority Management
+            </div>
+          </div>
+        </div>
+
+        {/* Floating Animation CSS */}
+        <style>{`
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+          }
+          .animate-float {
+            animation: float 3s ease-in-out infinite;
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return (
@@ -631,9 +768,22 @@ const JohnnyCMS = () => {
               )}
             </nav>
             
-            <button className="text-white hover:text-orange-200">
-              <Bell className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-3">
+              <button className="text-white hover:text-orange-200">
+                <Bell className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => {
+                  setIsLoggedIn(false);
+                  setCurrentUser(null);
+                  setCurrentView('login');
+                  setLoginData({ username: '', password: '' });
+                }}
+                className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition flex items-center gap-2"
+              >
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -653,7 +803,14 @@ const JohnnyCMS = () => {
         {currentView === 'analytics' && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Analytics Dashboard</h2>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {currentUser?.role === 'admin' ? 'Analytics Dashboard - All Branches' : `Analytics Dashboard - ${currentUser?.branch}`}
+                </h2>
+                {currentUser?.role !== 'admin' && (
+                  <p className="text-sm text-gray-600 mt-1">Viewing analytics for your branch only</p>
+                )}
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={exportToExcel}
@@ -814,7 +971,9 @@ const JohnnyCMS = () => {
 
               {/* Branch Performance */}
               <div className="bg-white p-6 rounded-xl shadow-md">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Branch Performance</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  {currentUser?.role === 'admin' ? 'Branch Performance' : 'My Branch Performance'}
+                </h3>
                 <div className="space-y-3 max-h-80 overflow-y-auto">
                   {getBranchPerformance().map((branch, idx) => (
                     <div key={idx} className="border border-gray-200 rounded-lg p-4">
@@ -843,7 +1002,12 @@ const JohnnyCMS = () => {
         {currentView === 'dashboard' && (
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Complaint Management</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                {currentUser?.role === 'admin' ? 'Complaint Management - All Branches' : `Complaint Management - ${currentUser?.branch}`}
+              </h2>
+              {currentUser?.role !== 'admin' && (
+                <p className="text-sm text-gray-600 mb-6">Viewing complaints for your branch only</p>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                 <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
