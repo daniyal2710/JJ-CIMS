@@ -27,12 +27,15 @@ const JohnnyCMS = () => {
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [showStockMovementModal, setShowStockMovementModal] = useState(false);
+  const [showInventoryCategoryModal, setShowInventoryCategoryModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [searchInventory, setSearchInventory] = useState('');
   const [inventoryFilter, setInventoryFilter] = useState({
     category: 'all',
     status: 'all'
   });
+  const [customInventoryCategories, setCustomInventoryCategories] = useState([]);
+  const [newInventoryCategory, setNewInventoryCategory] = useState('');
 
   const [newInventoryItem, setNewInventoryItem] = useState({
     name: '',
@@ -83,7 +86,7 @@ const JohnnyCMS = () => {
   const [newUser, setNewUser] = useState({ username: '', password: '', email: '', role: 'user', branch: '' });
   const [newCategory, setNewCategory] = useState({ name: '', department: 'IT' });
 
-  const inventoryCategories = ['Raw Materials', 'Ingredients', 'Packaging', 'Beverages', 'Sauces', 'Supplies', 'Equipment'];
+  const inventoryCategories = ['Raw Materials', 'Ingredients', 'Packaging', 'Beverages', 'Sauces', 'Supplies', 'Equipment', ...customInventoryCategories];
   const units = ['kg', 'lbs', 'liters', 'pieces', 'boxes', 'bags', 'bottles'];
 
   // Generate unique complaint number in format: JJ-YYYYMMDD-XXXX
@@ -133,6 +136,7 @@ const JohnnyCMS = () => {
       loadInventory();
       loadSuppliers();
       loadStockMovements();
+      loadInventoryCategories();
       if (currentUser?.role === 'admin') {
         loadUsers();
       }
@@ -218,6 +222,76 @@ const JohnnyCMS = () => {
       setStockMovements(data || []);
     } catch (err) {
       console.error('Error loading stock movements:', err);
+    }
+  };
+
+  const loadInventoryCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory_categories')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) {
+        // Table might not exist yet, that's okay
+        console.log('Inventory categories table not found - using defaults only');
+        return;
+      }
+      setCustomInventoryCategories(data?.map(cat => cat.name) || []);
+    } catch (err) {
+      console.error('Error loading inventory categories:', err);
+    }
+  };
+
+  const handleAddInventoryCategory = async () => {
+    if (!newInventoryCategory.trim()) {
+      setError('Category name is required');
+      return;
+    }
+
+    if (inventoryCategories.includes(newInventoryCategory.trim())) {
+      setError('Category already exists');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const { error } = await supabase
+        .from('inventory_categories')
+        .insert([{ name: newInventoryCategory.trim() }]);
+      
+      if (error) throw error;
+      
+      await loadInventoryCategories();
+      setNewInventoryCategory('');
+      setShowInventoryCategoryModal(false);
+    } catch (err) {
+      console.error('Error adding inventory category:', err);
+      setError('Failed to add category');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteInventoryCategory = async (categoryName) => {
+    if (!window.confirm('Are you sure you want to delete this category?')) return;
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('inventory_categories')
+        .delete()
+        .eq('name', categoryName);
+      
+      if (error) throw error;
+      await loadInventoryCategories();
+    } catch (err) {
+      console.error('Error deleting category:', err);
+      setError('Failed to delete category');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1233,6 +1307,13 @@ const JohnnyCMS = () => {
                 </p>
               </div>
               <div className="flex gap-2">
+                <button
+                  onClick={() => setShowInventoryCategoryModal(true)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
+                >
+                  <Layers className="w-4 h-4 mr-2" />
+                  Manage Categories
+                </button>
                 {currentUser?.role === 'admin' && (
                   <button
                     onClick={() => setShowSupplierModal(true)}
@@ -1253,7 +1334,7 @@ const JohnnyCMS = () => {
                       notes: ''
                     });
                   }}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Stock Movement
@@ -2666,6 +2747,111 @@ const JohnnyCMS = () => {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INVENTORY CATEGORY MODAL */}
+      {showInventoryCategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Manage Inventory Categories</h3>
+              <button
+                onClick={() => {
+                  setShowInventoryCategoryModal(false);
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Add New Category */}
+            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Category</h4>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newInventoryCategory}
+                  onChange={(e) => setNewInventoryCategory(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddInventoryCategory()}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                  placeholder="Enter category name (e.g., Frozen Items, Dairy Products)"
+                  disabled={loading}
+                />
+                <button
+                  onClick={handleAddInventoryCategory}
+                  disabled={loading}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
+                >
+                  {loading ? (
+                    <Loader className="animate-spin w-5 h-5" />
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Default Categories */}
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Default Categories (Built-in)</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {['Raw Materials', 'Ingredients', 'Packaging', 'Beverages', 'Sauces', 'Supplies', 'Equipment'].map((cat) => (
+                  <div key={cat} className="border border-gray-300 bg-gray-100 rounded-lg p-3 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Layers className="w-4 h-4 text-gray-500 mr-2" />
+                      <span className="text-sm text-gray-700">{cat}</span>
+                    </div>
+                    <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">Default</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Categories */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                Custom Categories ({customInventoryCategories.length})
+              </h4>
+              {customInventoryCategories.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">No custom categories yet. Add one above!</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {customInventoryCategories.map((cat) => (
+                    <div key={cat} className="border border-purple-200 bg-purple-50 rounded-lg p-3 flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Layers className="w-4 h-4 text-purple-600 mr-2" />
+                        <span className="text-sm text-gray-800">{cat}</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteInventoryCategory(cat)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowInventoryCategoryModal(false);
+                  setError('');
+                }}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
