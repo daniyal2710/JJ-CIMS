@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2, X, Loader, Download, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2, X, Loader, Download, TrendingUp, TrendingDown, AlertTriangle, Hash, Package, ShoppingCart, TrendingDown as StockDown, Archive, RefreshCw, Calendar, DollarSign, Layers } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import jsPDF from 'jspdf';
@@ -18,6 +18,50 @@ const JohnnyCMS = () => {
   const [categories, setCategories] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [complaints, setComplaints] = useState([]);
+  const [searchComplaintNumber, setSearchComplaintNumber] = useState('');
+
+  // Inventory States
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [stockMovements, setStockMovements] = useState([]);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [showStockMovementModal, setShowStockMovementModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [searchInventory, setSearchInventory] = useState('');
+  const [inventoryFilter, setInventoryFilter] = useState({
+    category: 'all',
+    status: 'all'
+  });
+
+  const [newInventoryItem, setNewInventoryItem] = useState({
+    name: '',
+    sku: '',
+    category: 'Raw Materials',
+    quantity: 0,
+    unit: 'kg',
+    reorder_point: 0,
+    unit_price: 0,
+    supplier_id: '',
+    expiry_date: '',
+    location: ''
+  });
+
+  const [newSupplier, setNewSupplier] = useState({
+    name: '',
+    contact_person: '',
+    phone: '',
+    email: '',
+    address: ''
+  });
+
+  const [newStockMovement, setNewStockMovement] = useState({
+    item_id: '',
+    movement_type: 'receipt',
+    quantity: 0,
+    reference_number: '',
+    notes: ''
+  });
 
   const [newComplaint, setNewComplaint] = useState({
     department: 'IT',
@@ -39,10 +83,56 @@ const JohnnyCMS = () => {
   const [newUser, setNewUser] = useState({ username: '', password: '', email: '', role: 'user', branch: '' });
   const [newCategory, setNewCategory] = useState({ name: '', department: 'IT' });
 
+  const inventoryCategories = ['Raw Materials', 'Ingredients', 'Packaging', 'Beverages', 'Sauces', 'Supplies', 'Equipment'];
+  const units = ['kg', 'lbs', 'liters', 'pieces', 'boxes', 'bags', 'bottles'];
+
+  // Generate unique complaint number in format: JJ-YYYYMMDD-XXXX
+  const generateComplaintNumber = async () => {
+    try {
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+      const prefix = `JJ-${dateStr}`;
+      
+      const { data, error } = await supabase
+        .from('complaints')
+        .select('complaint_number')
+        .like('complaint_number', `${prefix}%`)
+        .order('complaint_number', { ascending: false })
+        .limit(1);
+      
+      if (error) throw error;
+      
+      let sequenceNumber = 1;
+      
+      if (data && data.length > 0) {
+        const lastNumber = data[0].complaint_number;
+        const lastSequence = parseInt(lastNumber.split('-')[2]);
+        sequenceNumber = lastSequence + 1;
+      }
+      
+      const formattedSequence = sequenceNumber.toString().padStart(4, '0');
+      return `${prefix}-${formattedSequence}`;
+      
+    } catch (err) {
+      console.error('Error generating complaint number:', err);
+      return `JJ-${Date.now()}`;
+    }
+  };
+
+  // Generate SKU for inventory items
+  const generateSKU = (category) => {
+    const prefix = category.substring(0, 3).toUpperCase();
+    const timestamp = Date.now().toString().slice(-6);
+    return `${prefix}-${timestamp}`;
+  };
+
   useEffect(() => {
     if (isLoggedIn) {
       loadComplaints();
       loadCategories();
+      loadInventory();
+      loadSuppliers();
+      loadStockMovements();
       if (currentUser?.role === 'admin') {
         loadUsers();
       }
@@ -73,11 +163,253 @@ const JohnnyCMS = () => {
       
       if (error) throw error;
       setAllCategories(data || []);
-      // Initially set all categories
       setCategories(data || []);
     } catch (err) {
       console.error('Error loading categories:', err);
     }
+  };
+
+  const loadInventory = async () => {
+    try {
+      setLoading(true);
+      
+      let query = supabase
+        .from('inventory_items')
+        .select('*, suppliers(name)');
+      
+      if (currentUser?.role !== 'admin') {
+        query = query.eq('location', currentUser?.branch);
+      }
+      
+      const { data, error } = await query.order('name', { ascending: true });
+      
+      if (error) throw error;
+      setInventoryItems(data || []);
+    } catch (err) {
+      console.error('Error loading inventory:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      setSuppliers(data || []);
+    } catch (err) {
+      console.error('Error loading suppliers:', err);
+    }
+  };
+
+  const loadStockMovements = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stock_movements')
+        .select('*, inventory_items(name, sku)')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) throw error;
+      setStockMovements(data || []);
+    } catch (err) {
+      console.error('Error loading stock movements:', err);
+    }
+  };
+
+  const handleAddInventoryItem = async () => {
+    if (!newInventoryItem.name || !newInventoryItem.category) {
+      setError('Please fill in required fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const itemData = {
+        ...newInventoryItem,
+        sku: newInventoryItem.sku || generateSKU(newInventoryItem.category),
+        location: currentUser?.branch || 'Main Warehouse',
+        created_by: currentUser?.username
+      };
+
+      if (editingItem) {
+        const { error } = await supabase
+          .from('inventory_items')
+          .update(itemData)
+          .eq('id', editingItem.id);
+        
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('inventory_items')
+          .insert([itemData]);
+        
+        if (error) throw error;
+      }
+      
+      await loadInventory();
+      setNewInventoryItem({
+        name: '',
+        sku: '',
+        category: 'Raw Materials',
+        quantity: 0,
+        unit: 'kg',
+        reorder_point: 0,
+        unit_price: 0,
+        supplier_id: '',
+        expiry_date: '',
+        location: ''
+      });
+      setEditingItem(null);
+      setShowInventoryModal(false);
+    } catch (err) {
+      console.error('Error saving inventory item:', err);
+      setError('Failed to save inventory item');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteInventoryItem = async (itemId) => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('inventory_items')
+        .delete()
+        .eq('id', itemId);
+      
+      if (error) throw error;
+      await loadInventory();
+    } catch (err) {
+      console.error('Error deleting item:', err);
+      setError('Failed to delete item');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddSupplier = async () => {
+    if (!newSupplier.name) {
+      setError('Supplier name is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const { error } = await supabase
+        .from('suppliers')
+        .insert([newSupplier]);
+      
+      if (error) throw error;
+      
+      await loadSuppliers();
+      setNewSupplier({
+        name: '',
+        contact_person: '',
+        phone: '',
+        email: '',
+        address: ''
+      });
+      setShowSupplierModal(false);
+    } catch (err) {
+      console.error('Error adding supplier:', err);
+      setError('Failed to add supplier');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddStockMovement = async () => {
+    if (!newStockMovement.item_id || !newStockMovement.quantity) {
+      setError('Please select an item and enter quantity');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const { error: movementError } = await supabase
+        .from('stock_movements')
+        .insert([{
+          ...newStockMovement,
+          created_by: currentUser?.username
+        }]);
+      
+      if (movementError) throw movementError;
+
+      // Update inventory quantity
+      const item = inventoryItems.find(i => i.id === parseInt(newStockMovement.item_id));
+      const quantityChange = newStockMovement.movement_type === 'receipt' || newStockMovement.movement_type === 'return'
+        ? parseInt(newStockMovement.quantity)
+        : -parseInt(newStockMovement.quantity);
+      
+      const { error: updateError } = await supabase
+        .from('inventory_items')
+        .update({ quantity: item.quantity + quantityChange })
+        .eq('id', parseInt(newStockMovement.item_id));
+      
+      if (updateError) throw updateError;
+      
+      await loadInventory();
+      await loadStockMovements();
+      setNewStockMovement({
+        item_id: '',
+        movement_type: 'receipt',
+        quantity: 0,
+        reference_number: '',
+        notes: ''
+      });
+      setShowStockMovementModal(false);
+    } catch (err) {
+      console.error('Error adding stock movement:', err);
+      setError('Failed to add stock movement');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getInventoryStatus = (item) => {
+    if (item.quantity <= 0) return { status: 'Out of Stock', color: 'red' };
+    if (item.quantity <= item.reorder_point) return { status: 'Low Stock', color: 'yellow' };
+    return { status: 'In Stock', color: 'green' };
+  };
+
+  const getExpiryStatus = (expiryDate) => {
+    if (!expiryDate) return null;
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const daysUntilExpiry = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilExpiry < 0) return { status: 'Expired', color: 'red' };
+    if (daysUntilExpiry <= 7) return { status: `Expires in ${daysUntilExpiry} days`, color: 'red' };
+    if (daysUntilExpiry <= 30) return { status: `Expires in ${daysUntilExpiry} days`, color: 'yellow' };
+    return { status: `Expires in ${daysUntilExpiry} days`, color: 'green' };
+  };
+
+  const getInventoryAnalytics = () => {
+    const total = inventoryItems.length;
+    const lowStock = inventoryItems.filter(i => i.quantity > 0 && i.quantity <= i.reorder_point).length;
+    const outOfStock = inventoryItems.filter(i => i.quantity <= 0).length;
+    const expiringSoon = inventoryItems.filter(i => {
+      if (!i.expiry_date) return false;
+      const daysUntil = Math.ceil((new Date(i.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
+      return daysUntil > 0 && daysUntil <= 30;
+    }).length;
+    
+    const totalValue = inventoryItems.reduce((sum, i) => sum + (i.quantity * i.unit_price), 0);
+    
+    return { total, lowStock, outOfStock, expiringSoon, totalValue };
   };
 
   const getCategoriesByDepartment = (department) => {
@@ -92,7 +424,6 @@ const JohnnyCMS = () => {
         .from('complaints')
         .select('*');
       
-      // Filter by branch for non-admin users
       if (currentUser?.role !== 'admin') {
         query = query.eq('branch', currentUser?.branch);
       }
@@ -114,7 +445,6 @@ const JohnnyCMS = () => {
         })
       })) || [];
       
-      // Sort by priority: High -> Medium -> Low
       const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
       formattedComplaints.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
       
@@ -169,9 +499,12 @@ const JohnnyCMS = () => {
       setLoading(true);
       setError('');
       
+      const complaintNumber = await generateComplaintNumber();
+      
       const { error } = await supabase
         .from('complaints')
         .insert([{
+          complaint_number: complaintNumber,
           department: newComplaint.department,
           category: newComplaint.category,
           comments: newComplaint.comments,
@@ -187,6 +520,8 @@ const JohnnyCMS = () => {
       await loadComplaints();
       setNewComplaint({ department: 'IT', category: '', comments: '', priority: 'Medium' });
       setCurrentView('dashboard');
+      
+      alert(`Complaint created successfully!\nComplaint Number: ${complaintNumber}`);
     } catch (err) {
       console.error('Error adding complaint:', err);
       setError('Failed to add complaint');
@@ -340,6 +675,53 @@ const JohnnyCMS = () => {
     }
   };
 
+  const searchByComplaintNumber = async () => {
+    if (!searchComplaintNumber.trim()) {
+      loadComplaints();
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let query = supabase
+        .from('complaints')
+        .select('*')
+        .ilike('complaint_number', `%${searchComplaintNumber}%`);
+      
+      if (currentUser?.role !== 'admin') {
+        query = query.eq('branch', currentUser?.branch);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      const formattedComplaints = data?.map(c => ({
+        ...c,
+        priority: c.priority || 'Medium',
+        date: new Date(c.created_at).toLocaleString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true 
+        })
+      })) || [];
+      
+      setComplaints(formattedComplaints);
+      
+      if (formattedComplaints.length === 0) {
+        setError('No complaints found with that number');
+      }
+    } catch (err) {
+      console.error('Error searching complaints:', err);
+      setError('Failed to search complaints');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getPriorityBadge = (priority) => {
     const styles = {
       'High': 'bg-red-100 text-red-700 border-red-300',
@@ -354,7 +736,6 @@ const JohnnyCMS = () => {
     return null;
   };
 
-  // Analytics Functions
   const getAnalyticsData = () => {
     const now = new Date();
     const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -438,7 +819,6 @@ const JohnnyCMS = () => {
   };
 
   const getBranchPerformance = () => {
-    // For non-admin users, only show their own branch
     if (currentUser?.role !== 'admin') {
       const branchComplaints = complaints.filter(c => c.branch === currentUser?.branch);
       const resolved = branchComplaints.filter(c => c.status === 'Resolved').length;
@@ -454,7 +834,6 @@ const JohnnyCMS = () => {
       }];
     }
     
-    // Admin sees all branches
     const branchStats = {};
     complaints.forEach(c => {
       if (!branchStats[c.branch]) {
@@ -478,6 +857,7 @@ const JohnnyCMS = () => {
 
   const exportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(complaints.map(c => ({
+      'Complaint Number': c.complaint_number,
       Date: c.date,
       Department: c.department,
       Category: c.category,
@@ -493,6 +873,26 @@ const JohnnyCMS = () => {
     XLSX.writeFile(wb, `JJ_Complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  const exportInventoryToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(inventoryItems.map(i => ({
+      SKU: i.sku,
+      Name: i.name,
+      Category: i.category,
+      Quantity: i.quantity,
+      Unit: i.unit,
+      'Unit Price': i.unit_price,
+      'Total Value': (i.quantity * i.unit_price).toFixed(2),
+      'Reorder Point': i.reorder_point,
+      Location: i.location,
+      'Expiry Date': i.expiry_date || 'N/A',
+      Status: getInventoryStatus(i).status
+    })));
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+    XLSX.writeFile(wb, `JJ_Inventory_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   const exportToPDF = () => {
     const doc = new jsPDF();
     
@@ -503,6 +903,7 @@ const JohnnyCMS = () => {
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
     
     const tableData = complaints.map(c => [
+      c.complaint_number,
       c.date,
       c.department,
       c.category,
@@ -513,7 +914,7 @@ const JohnnyCMS = () => {
     
     doc.autoTable({
       startY: 40,
-      head: [['Date', 'Department', 'Category', 'Priority', 'Status', 'Branch']],
+      head: [['Complaint #', 'Date', 'Department', 'Category', 'Priority', 'Status', 'Branch']],
       body: tableData,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [234, 88, 12] }
@@ -528,6 +929,20 @@ const JohnnyCMS = () => {
     return true;
   });
 
+  const filteredInventory = inventoryItems.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchInventory.toLowerCase()) ||
+                         item.sku.toLowerCase().includes(searchInventory.toLowerCase());
+    const matchesCategory = inventoryFilter.category === 'all' || item.category === inventoryFilter.category;
+    
+    let matchesStatus = true;
+    if (inventoryFilter.status !== 'all') {
+      const status = getInventoryStatus(item).status;
+      matchesStatus = status.toLowerCase().includes(inventoryFilter.status);
+    }
+    
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
   const statusOptions = ['Open', 'Pending', 'Parking', 'Resolved'];
   const priorityOptions = ['High', 'Medium', 'Low'];
 
@@ -535,13 +950,11 @@ const JohnnyCMS = () => {
   if (currentView === 'welcome') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute w-96 h-96 bg-white opacity-10 rounded-full -top-48 -left-48 animate-pulse"></div>
           <div className="absolute w-96 h-96 bg-white opacity-10 rounded-full -bottom-48 -right-48 animate-pulse delay-1000"></div>
         </div>
 
-        {/* Login Button at Top Right */}
         <div className="absolute top-6 right-6 z-20">
           <button
             onClick={() => setCurrentView('login')}
@@ -551,9 +964,7 @@ const JohnnyCMS = () => {
           </button>
         </div>
 
-        {/* Main Content */}
         <div className="relative z-10 text-center">
-          {/* 3D Logo */}
           <div className="mb-8 transform hover:scale-110 transition-transform duration-500">
             <div className="inline-block relative">
               <div className="absolute inset-0 bg-white opacity-20 blur-3xl rounded-full"></div>
@@ -567,7 +978,6 @@ const JohnnyCMS = () => {
             </div>
           </div>
 
-          {/* 3D Welcome Text */}
           <h1 className="text-white mb-4" style={{
             fontSize: 'clamp(2rem, 8vw, 5rem)',
             fontWeight: '900',
@@ -604,10 +1014,9 @@ const JohnnyCMS = () => {
             textShadow: '0 4px 15px rgba(0,0,0,0.4)',
             letterSpacing: '2px'
           }}>
-            Complaint & Issue Management System
+            Complaint & Inventory Management System
           </p>
 
-          {/* CTA Button */}
           <button
             onClick={() => setCurrentView('login')}
             className="px-12 py-5 bg-white text-orange-600 rounded-full font-bold text-2xl shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 animate-bounce"
@@ -615,7 +1024,6 @@ const JohnnyCMS = () => {
             Get Started →
           </button>
 
-          {/* Features Pills */}
           <div className="mt-16 flex flex-wrap justify-center gap-4">
             <div className="px-6 py-3 bg-white bg-opacity-20 backdrop-blur-md rounded-full text-white font-semibold">
               ⚡ Real-time Tracking
@@ -624,12 +1032,11 @@ const JohnnyCMS = () => {
               📊 Advanced Analytics
             </div>
             <div className="px-6 py-3 bg-white bg-opacity-20 backdrop-blur-md rounded-full text-white font-semibold">
-              🎯 Priority Management
+              📦 Inventory Control
             </div>
           </div>
         </div>
 
-        {/* Floating Animation CSS */}
         <style>{`
           @keyframes float {
             0%, 100% { transform: translateY(0px); }
@@ -653,7 +1060,7 @@ const JohnnyCMS = () => {
                 <div className="text-white font-bold text-3xl">J&J</div>
               </div>
               <h1 className="text-3xl font-bold text-gray-800">Johnny and Jugnu</h1>
-              <p className="text-gray-600 mt-2">IT Support Central</p>
+              <p className="text-gray-600 mt-2">Management System</p>
             </div>
             
             {error && (
@@ -717,6 +1124,7 @@ const JohnnyCMS = () => {
   }
 
   const analytics = getAnalyticsData();
+  const inventoryAnalytics = getInventoryAnalytics();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -729,7 +1137,7 @@ const JohnnyCMS = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">Johnny and Jugnu</h1>
-                <p className="text-sm text-orange-100">IT Support Central - {currentUser?.role === 'admin' ? 'Admin' : 'User'} ({currentUser?.username})</p>
+                <p className="text-sm text-orange-100">Management System - {currentUser?.role === 'admin' ? 'Admin' : 'User'} ({currentUser?.username})</p>
               </div>
             </div>
             
@@ -747,6 +1155,13 @@ const JohnnyCMS = () => {
               >
                 <FileText className="inline-block w-4 h-4 mr-2" />
                 Complaints
+              </button>
+              <button
+                onClick={() => setCurrentView('inventory')}
+                className={`px-4 py-2 rounded-lg transition ${currentView === 'inventory' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+              >
+                <Package className="inline-block w-4 h-4 mr-2" />
+                Inventory
               </button>
               <button
                 onClick={() => setCurrentView('add')}
@@ -807,6 +1222,329 @@ const JohnnyCMS = () => {
       )}
 
       <main className="max-w-7xl mx-auto p-6">
+        {/* INVENTORY VIEW */}
+        {currentView === 'inventory' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Inventory Management</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {currentUser?.role === 'admin' ? 'Managing all locations' : `Location: ${currentUser?.branch}`}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {currentUser?.role === 'admin' && (
+                  <button
+                    onClick={() => setShowSupplierModal(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Add Supplier
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowStockMovementModal(true);
+                    setNewStockMovement({
+                      item_id: '',
+                      movement_type: 'receipt',
+                      quantity: 0,
+                      reference_number: '',
+                      notes: ''
+                    });
+                  }}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Stock Movement
+                </button>
+                <button
+                  onClick={() => {
+                    setShowInventoryModal(true);
+                    setEditingItem(null);
+                    setNewInventoryItem({
+                      name: '',
+                      sku: '',
+                      category: 'Raw Materials',
+                      quantity: 0,
+                      unit: 'kg',
+                      reorder_point: 0,
+                      unit_price: 0,
+                      supplier_id: '',
+                      expiry_date: '',
+                      location: ''
+                    });
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </button>
+                <button
+                  onClick={exportInventoryToExcel}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </button>
+              </div>
+            </div>
+
+            {/* Inventory Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Total Items</p>
+                  <Package className="w-8 h-8 text-blue-500" />
+                </div>
+                <p className="text-3xl font-bold text-gray-800">{inventoryAnalytics.total}</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-yellow-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Low Stock</p>
+                  <StockDown className="w-8 h-8 text-yellow-500" />
+                </div>
+                <p className="text-3xl font-bold text-gray-800">{inventoryAnalytics.lowStock}</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-red-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Out of Stock</p>
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
+                <p className="text-3xl font-bold text-gray-800">{inventoryAnalytics.outOfStock}</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Expiring Soon</p>
+                  <Calendar className="w-8 h-8 text-orange-500" />
+                </div>
+                <p className="text-3xl font-bold text-gray-800">{inventoryAnalytics.expiringSoon}</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-600 text-sm">Total Value</p>
+                  <DollarSign className="w-8 h-8 text-green-500" />
+                </div>
+                <p className="text-2xl font-bold text-gray-800">
+                  ${inventoryAnalytics.totalValue.toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            {/* Search and Filter */}
+            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={searchInventory}
+                    onChange={(e) => setSearchInventory(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                    placeholder="Search by name or SKU..."
+                  />
+                </div>
+                
+                <div className="flex-1">
+                  <select
+                    value={inventoryFilter.category}
+                    onChange={(e) => setInventoryFilter({...inventoryFilter, category: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  >
+                    <option value="all">All Categories</option>
+                    {inventoryCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex-1">
+                  <select
+                    value={inventoryFilter.status}
+                    onChange={(e) => setInventoryFilter({...inventoryFilter, status: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="stock">In Stock</option>
+                    <option value="low">Low Stock</option>
+                    <option value="out">Out of Stock</option>
+                  </select>
+                </div>
+                
+                <button 
+                  onClick={loadInventory}
+                  className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
+                >
+                  <Search className="inline-block w-4 h-4 mr-2" />
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Inventory Table */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              {loading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader className="animate-spin w-8 h-8 text-orange-500" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 border-b">
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">SKU</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Quantity</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Unit Price</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total Value</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Expiry</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Location</th>
+                        {currentUser?.role === 'admin' && (
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredInventory.map((item) => {
+                        const status = getInventoryStatus(item);
+                        const expiryStatus = getExpiryStatus(item.expiry_date);
+                        
+                        return (
+                          <tr key={item.id} className="border-b hover:bg-gray-50 transition">
+                            <td className="px-4 py-3">
+                              <span className="text-sm font-mono font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                {item.sku}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">{item.name}</td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+                                {item.category}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              <span className="font-semibold">{item.quantity}</span> {item.unit}
+                              {item.quantity <= item.reorder_point && (
+                                <div className="text-xs text-orange-600 mt-1">
+                                  Reorder: {item.reorder_point} {item.unit}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">${item.unit_price}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-gray-800">
+                              ${(item.quantity * item.unit_price).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                status.color === 'red' ? 'bg-red-100 text-red-700' :
+                                status.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-green-100 text-green-700'
+                              }`}>
+                                {status.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {expiryStatus ? (
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  expiryStatus.color === 'red' ? 'bg-red-100 text-red-700' :
+                                  expiryStatus.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-green-100 text-green-700'
+                                }`}>
+                                  {expiryStatus.status}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">N/A</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{item.location}</td>
+                            {currentUser?.role === 'admin' && (
+                              <td className="px-4 py-3">
+                                <button
+                                  onClick={() => {
+                                    setEditingItem(item);
+                                    setNewInventoryItem(item);
+                                    setShowInventoryModal(true);
+                                  }}
+                                  className="text-orange-600 hover:text-orange-800 mr-3"
+                                >
+                                  <Edit className="w-4 h-4 inline" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteInventoryItem(item.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <Trash2 className="w-4 h-4 inline" />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Recent Stock Movements */}
+            <div className="mt-6 bg-white rounded-xl shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Stock Movements</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Item</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Quantity</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Reference</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Notes</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stockMovements.slice(0, 10).map((movement) => (
+                      <tr key={movement.id} className="border-b hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {new Date(movement.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {movement.inventory_items?.name}
+                          <div className="text-xs text-gray-500">{movement.inventory_items?.sku}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            movement.movement_type === 'receipt' ? 'bg-green-100 text-green-700' :
+                            movement.movement_type === 'usage' ? 'bg-blue-100 text-blue-700' :
+                            movement.movement_type === 'wastage' ? 'bg-red-100 text-red-700' :
+                            movement.movement_type === 'transfer' ? 'bg-purple-100 text-purple-700' :
+                            'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {movement.movement_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold text-gray-700">
+                          {movement.movement_type === 'receipt' || movement.movement_type === 'return' ? '+' : '-'}
+                          {movement.quantity}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{movement.reference_number || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{movement.notes || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{movement.created_by}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ANALYTICS VIEW */}
         {currentView === 'analytics' && (
           <div>
             <div className="flex justify-between items-center mb-6">
@@ -895,7 +1633,6 @@ const JohnnyCMS = () => {
 
             {/* Charts Row 1 */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              {/* Status Distribution */}
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Status Distribution</h3>
                 <ResponsiveContainer width="100%" height={250}>
@@ -919,7 +1656,6 @@ const JohnnyCMS = () => {
                 </ResponsiveContainer>
               </div>
 
-              {/* Priority Distribution */}
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Priority Distribution</h3>
                 <ResponsiveContainer width="100%" height={250}>
@@ -943,7 +1679,6 @@ const JohnnyCMS = () => {
                 </ResponsiveContainer>
               </div>
 
-              {/* Weekly Trend */}
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">7-Day Trend</h3>
                 <ResponsiveContainer width="100%" height={250}>
@@ -960,9 +1695,7 @@ const JohnnyCMS = () => {
               </div>
             </div>
 
-            {/* Charts Row 2 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              {/* Category Breakdown */}
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Top 10 Categories</h3>
                 <ResponsiveContainer width="100%" height={300}>
@@ -976,7 +1709,6 @@ const JohnnyCMS = () => {
                 </ResponsiveContainer>
               </div>
 
-              {/* Branch Performance */}
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
                   {currentUser?.role === 'admin' ? 'Branch Performance' : 'My Branch Performance'}
@@ -1006,6 +1738,7 @@ const JohnnyCMS = () => {
           </div>
         )}
 
+        {/* COMPLAINTS DASHBOARD */}
         {currentView === 'dashboard' && (
           <div>
             <div className="mb-6">
@@ -1078,6 +1811,43 @@ const JohnnyCMS = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="mb-6 flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Hash className="inline w-4 h-4 mr-1" />
+                    Search by Complaint Number
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={searchComplaintNumber}
+                      onChange={(e) => setSearchComplaintNumber(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && searchByComplaintNumber()}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                      placeholder="Enter complaint number (e.g., JJ-20251111-0001)"
+                    />
+                    <button
+                      onClick={searchByComplaintNumber}
+                      className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
+                    >
+                      <Search className="inline-block w-4 h-4 mr-2" />
+                      Search
+                    </button>
+                    {searchComplaintNumber && (
+                      <button
+                        onClick={() => {
+                          setSearchComplaintNumber('');
+                          loadComplaints();
+                        }}
+                        className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
@@ -1148,6 +1918,10 @@ const JohnnyCMS = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50 border-b">
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                          <Hash className="inline w-4 h-4 mr-1" />
+                          Complaint #
+                        </th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Priority</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Department</th>
@@ -1163,6 +1937,11 @@ const JohnnyCMS = () => {
                     <tbody>
                       {filteredComplaints.map((complaint) => (
                         <tr key={complaint.id} className="border-b hover:bg-gray-50 transition">
+                          <td className="px-4 py-3">
+                            <span className="text-sm font-mono font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                              {complaint.complaint_number}
+                            </span>
+                          </td>
                           <td className="px-4 py-3 text-sm text-gray-700">{complaint.date}</td>
                           <td className="px-4 py-3">
                             {currentUser?.role === 'admin' ? (
@@ -1226,6 +2005,7 @@ const JohnnyCMS = () => {
           </div>
         )}
 
+        {/* ADD NEW COMPLAINT */}
         {currentView === 'add' && (
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Maintenance Complaint</h2>
@@ -1313,7 +2093,9 @@ const JohnnyCMS = () => {
                   {complaints.slice(0, 5).map((c) => (
                     <div key={c.id} className="p-3 border border-gray-200 rounded-lg hover:border-orange-300 transition">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs font-semibold text-orange-600">{c.category}</span>
+                        <span className="text-xs font-mono font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                          {c.complaint_number}
+                        </span>
                         <div className="flex gap-2">
                           <span className={`px-2 py-1 rounded-full text-xs border ${getPriorityBadge(c.priority)}`}>
                             {c.priority}
@@ -1328,7 +2110,8 @@ const JohnnyCMS = () => {
                           </span>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-700 line-clamp-2">{c.comments}</p>
+                      <span className="text-xs font-semibold text-orange-600">{c.category}</span>
+                      <p className="text-sm text-gray-700 line-clamp-2 mt-1">{c.comments}</p>
                       <p className="text-xs text-gray-500 mt-2">{c.date}</p>
                     </div>
                   ))}
@@ -1338,6 +2121,7 @@ const JohnnyCMS = () => {
           </div>
         )}
 
+        {/* USERS MANAGEMENT */}
         {currentView === 'users' && currentUser?.role === 'admin' && (
           <div>
             <div className="flex justify-between items-center mb-6">
@@ -1411,6 +2195,7 @@ const JohnnyCMS = () => {
           </div>
         )}
 
+        {/* CATEGORIES MANAGEMENT */}
         {currentView === 'categories' && currentUser?.role === 'admin' && (
           <div>
             <div className="flex justify-between items-center mb-6">
@@ -1430,7 +2215,6 @@ const JohnnyCMS = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* IT Department */}
                 <div className="bg-white rounded-xl shadow-md p-6">
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
                     <span className="bg-blue-500 text-white px-3 py-1 rounded-full mr-3">IT</span>
@@ -1457,7 +2241,6 @@ const JohnnyCMS = () => {
                   )}
                 </div>
 
-                {/* Operations Department */}
                 <div className="bg-white rounded-xl shadow-md p-6">
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
                     <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">Operations</span>
@@ -1484,7 +2267,6 @@ const JohnnyCMS = () => {
                   )}
                 </div>
 
-                {/* Maintenance Department */}
                 <div className="bg-white rounded-xl shadow-md p-6">
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
                     <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Maintenance</span>
@@ -1516,6 +2298,380 @@ const JohnnyCMS = () => {
         )}
       </main>
 
+      {/* Inventory Item Modal */}
+      {showInventoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 my-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                {editingItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowInventoryModal(false);
+                  setEditingItem(null);
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Item Name *</label>
+                <input
+                  type="text"
+                  value={newInventoryItem.name}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, name: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder="Enter item name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SKU</label>
+                <input
+                  type="text"
+                  value={newInventoryItem.sku}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, sku: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder="Auto-generated if empty"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                <select
+                  value={newInventoryItem.category}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, category: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  {inventoryCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Quantity *</label>
+                <input
+                  type="number"
+                  value={newInventoryItem.quantity}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, quantity: parseFloat(e.target.value) || 0})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Unit *</label>
+                <select
+                  value={newInventoryItem.unit}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, unit: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  {units.map(unit => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reorder Point *</label>
+                <input
+                  type="number"
+                  value={newInventoryItem.reorder_point}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, reorder_point: parseFloat(e.target.value) || 0})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Unit Price ($) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newInventoryItem.unit_price}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, unit_price: parseFloat(e.target.value) || 0})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
+                <select
+                  value={newInventoryItem.supplier_id}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, supplier_id: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  <option value="">Select Supplier</option>
+                  {suppliers.map(supplier => (
+                    <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
+                <input
+                  type="date"
+                  value={newInventoryItem.expiry_date}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, expiry_date: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                <input
+                  type="text"
+                  value={newInventoryItem.location}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, location: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder={currentUser?.branch || 'Enter location'}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowInventoryModal(false);
+                  setEditingItem(null);
+                  setError('');
+                }}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddInventoryItem}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition flex items-center justify-center"
+              >
+                {loading ? (
+                  <Loader className="animate-spin w-5 h-5" />
+                ) : (
+                  `${editingItem ? 'Update' : 'Add'} Item`
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Supplier Modal */}
+      {showSupplierModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Add New Supplier</h3>
+              <button
+                onClick={() => {
+                  setShowSupplierModal(false);
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Supplier Name *</label>
+                <input
+                  type="text"
+                  value={newSupplier.name}
+                  onChange={(e) => setNewSupplier({...newSupplier, name: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder="Enter supplier name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Contact Person</label>
+                <input
+                  type="text"
+                  value={newSupplier.contact_person}
+                  onChange={(e) => setNewSupplier({...newSupplier, contact_person: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder="Enter contact person"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                <input
+                  type="tel"
+                  value={newSupplier.phone}
+                  onChange={(e) => setNewSupplier({...newSupplier, phone: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder="Enter phone number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={newSupplier.email}
+                  onChange={(e) => setNewSupplier({...newSupplier, email: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder="Enter email"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                <textarea
+                  value={newSupplier.address}
+                  onChange={(e) => setNewSupplier({...newSupplier, address: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none h-20 resize-none"
+                  placeholder="Enter address"
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowSupplierModal(false);
+                    setError('');
+                  }}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddSupplier}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition flex items-center justify-center"
+                >
+                  {loading ? (
+                    <Loader className="animate-spin w-5 h-5" />
+                  ) : (
+                    'Add Supplier'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Movement Modal */}
+      {showStockMovementModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Record Stock Movement</h3>
+              <button
+                onClick={() => {
+                  setShowStockMovementModal(false);
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Item *</label>
+                <select
+                  value={newStockMovement.item_id}
+                  onChange={(e) => setNewStockMovement({...newStockMovement, item_id: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  <option value="">Select an item</option>
+                  {inventoryItems.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} ({item.sku}) - Current: {item.quantity} {item.unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Movement Type *</label>
+                <select
+                  value={newStockMovement.movement_type}
+                  onChange={(e) => setNewStockMovement({...newStockMovement, movement_type: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  <option value="receipt">Receipt (Add Stock)</option>
+                  <option value="usage">Usage (Remove Stock)</option>
+                  <option value="wastage">Wastage (Remove Stock)</option>
+                  <option value="transfer">Transfer</option>
+                  <option value="return">Return (Add Stock)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Quantity *</label>
+                <input
+                  type="number"
+                  value={newStockMovement.quantity}
+                  onChange={(e) => setNewStockMovement({...newStockMovement, quantity: parseFloat(e.target.value) || 0})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder="Enter quantity"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reference Number</label>
+                <input
+                  type="text"
+                  value={newStockMovement.reference_number}
+                  onChange={(e) => setNewStockMovement({...newStockMovement, reference_number: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder="PO#, Invoice#, etc."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <textarea
+                  value={newStockMovement.notes}
+                  onChange={(e) => setNewStockMovement({...newStockMovement, notes: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none h-20 resize-none"
+                  placeholder="Additional notes..."
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowStockMovementModal(false);
+                    setError('');
+                  }}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddStockMovement}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition flex items-center justify-center"
+                >
+                  {loading ? (
+                    <Loader className="animate-spin w-5 h-5" />
+                  ) : (
+                    'Record Movement'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* USER MODAL */}
       {showUserModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
@@ -1626,6 +2782,7 @@ const JohnnyCMS = () => {
         </div>
       )}
 
+      {/* CATEGORY MODAL */}
       {showCategoryModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
