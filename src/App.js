@@ -24,18 +24,43 @@ const JohnnyCMS = () => {
   const [inventoryItems, setInventoryItems] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [stockMovements, setStockMovements] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [showStockMovementModal, setShowStockMovementModal] = useState(false);
   const [showInventoryCategoryModal, setShowInventoryCategoryModal] = useState(false);
+  const [showWarehouseModal, setShowWarehouseModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [editingWarehouse, setEditingWarehouse] = useState(null);
   const [searchInventory, setSearchInventory] = useState('');
+  const [selectedWarehouse, setSelectedWarehouse] = useState('all');
   const [inventoryFilter, setInventoryFilter] = useState({
     category: 'all',
     status: 'all'
   });
   const [customInventoryCategories, setCustomInventoryCategories] = useState([]);
   const [newInventoryCategory, setNewInventoryCategory] = useState('');
+
+  const [newWarehouse, setNewWarehouse] = useState({
+    name: '',
+    branch: '',
+    address: '',
+    manager: '',
+    phone: '',
+    email: '',
+    status: 'active'
+  });
+
+  const [newTransfer, setNewTransfer] = useState({
+    item_id: '',
+    from_warehouse_id: '',
+    to_warehouse_id: '',
+    quantity: 0,
+    transfer_date: new Date().toISOString().split('T')[0],
+    reference_number: '',
+    notes: ''
+  });
 
   const [newInventoryItem, setNewInventoryItem] = useState({
     name: '',
@@ -137,6 +162,7 @@ const JohnnyCMS = () => {
       loadSuppliers();
       loadStockMovements();
       loadInventoryCategories();
+      loadWarehouses();
       if (currentUser?.role === 'admin') {
         loadUsers();
       }
@@ -179,10 +205,13 @@ const JohnnyCMS = () => {
       
       let query = supabase
         .from('inventory_items')
-        .select('*, suppliers(name)');
+        .select('*, suppliers(name), warehouses(name, branch)');
       
+      // Filter by warehouse/branch
       if (currentUser?.role !== 'admin') {
-        query = query.eq('location', currentUser?.branch);
+        query = query.eq('warehouse_id', currentUser?.warehouse_id);
+      } else if (selectedWarehouse !== 'all') {
+        query = query.eq('warehouse_id', selectedWarehouse);
       }
       
       const { data, error } = await query.order('name', { ascending: true });
@@ -191,6 +220,218 @@ const JohnnyCMS = () => {
       setInventoryItems(data || []);
     } catch (err) {
       console.error('Error loading inventory:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadWarehouses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('warehouses')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      setWarehouses(data || []);
+    } catch (err) {
+      console.error('Error loading warehouses:', err);
+    }
+  };
+
+  const handleAddWarehouse = async () => {
+    if (!newWarehouse.name || !newWarehouse.branch) {
+      setError('Warehouse name and branch are required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      if (editingWarehouse) {
+        const { error } = await supabase
+          .from('warehouses')
+          .update({
+            name: newWarehouse.name,
+            branch: newWarehouse.branch,
+            address: newWarehouse.address,
+            manager: newWarehouse.manager,
+            phone: newWarehouse.phone,
+            email: newWarehouse.email,
+            status: newWarehouse.status
+          })
+          .eq('id', editingWarehouse.id);
+        
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('warehouses')
+          .insert([{
+            ...newWarehouse,
+            created_by: currentUser?.username
+          }]);
+        
+        if (error) throw error;
+      }
+      
+      await loadWarehouses();
+      setNewWarehouse({
+        name: '',
+        branch: '',
+        address: '',
+        manager: '',
+        phone: '',
+        email: '',
+        status: 'active'
+      });
+      setEditingWarehouse(null);
+      setShowWarehouseModal(false);
+    } catch (err) {
+      console.error('Error saving warehouse:', err);
+      setError('Failed to save warehouse');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteWarehouse = async (warehouseId) => {
+    if (!window.confirm('Are you sure? This will affect all inventory items in this warehouse.')) return;
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('warehouses')
+        .delete()
+        .eq('id', warehouseId);
+      
+      if (error) throw error;
+      await loadWarehouses();
+      await loadInventory();
+    } catch (err) {
+      console.error('Error deleting warehouse:', err);
+      setError('Failed to delete warehouse. Items may still be assigned to it.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTransferItem = async () => {
+    if (!newTransfer.item_id || !newTransfer.from_warehouse_id || !newTransfer.to_warehouse_id || !newTransfer.quantity) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    if (newTransfer.from_warehouse_id === newTransfer.to_warehouse_id) {
+      setError('Cannot transfer to the same warehouse');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Get source item
+      const { data: sourceItem, error: sourceError } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('id', newTransfer.item_id)
+        .eq('warehouse_id', newTransfer.from_warehouse_id)
+        .single();
+      
+      if (sourceError || !sourceItem) {
+        throw new Error('Source item not found');
+      }
+
+      if (sourceItem.quantity < parseFloat(newTransfer.quantity)) {
+        setError('Insufficient quantity in source warehouse');
+        setLoading(false);
+        return;
+      }
+
+      // Reduce quantity from source warehouse
+      const { error: updateSourceError } = await supabase
+        .from('inventory_items')
+        .update({ 
+          quantity: sourceItem.quantity - parseFloat(newTransfer.quantity),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', newTransfer.item_id);
+      
+      if (updateSourceError) throw updateSourceError;
+
+      // Check if item exists in destination warehouse
+      const { data: destItem, error: destCheckError } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('sku', sourceItem.sku)
+        .eq('warehouse_id', newTransfer.to_warehouse_id)
+        .single();
+
+      if (destItem) {
+        // Update existing item in destination
+        const { error: updateDestError } = await supabase
+          .from('inventory_items')
+          .update({ 
+            quantity: destItem.quantity + parseFloat(newTransfer.quantity),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', destItem.id);
+        
+        if (updateDestError) throw updateDestError;
+      } else {
+        // Create new item in destination
+        const { error: insertDestError } = await supabase
+          .from('inventory_items')
+          .insert([{
+            name: sourceItem.name,
+            sku: sourceItem.sku,
+            category: sourceItem.category,
+            quantity: parseFloat(newTransfer.quantity),
+            unit: sourceItem.unit,
+            reorder_point: sourceItem.reorder_point,
+            unit_price: sourceItem.unit_price,
+            supplier_id: sourceItem.supplier_id,
+            warehouse_id: newTransfer.to_warehouse_id,
+            expiry_date: sourceItem.expiry_date,
+            created_by: currentUser?.username
+          }]);
+        
+        if (insertDestError) throw insertDestError;
+      }
+
+      // Record stock movement
+      const { error: movementError } = await supabase
+        .from('stock_movements')
+        .insert([{
+          item_id: newTransfer.item_id,
+          movement_type: 'transfer',
+          quantity: parseFloat(newTransfer.quantity),
+          from_warehouse_id: newTransfer.from_warehouse_id,
+          to_warehouse_id: newTransfer.to_warehouse_id,
+          reference_number: newTransfer.reference_number,
+          notes: newTransfer.notes,
+          created_by: currentUser?.username
+        }]);
+      
+      if (movementError) throw movementError;
+      
+      await loadInventory();
+      await loadStockMovements();
+      setNewTransfer({
+        item_id: '',
+        from_warehouse_id: '',
+        to_warehouse_id: '',
+        quantity: 0,
+        transfer_date: new Date().toISOString().split('T')[0],
+        reference_number: '',
+        notes: ''
+      });
+      setShowTransferModal(false);
+      alert('Transfer completed successfully!');
+    } catch (err) {
+      console.error('Error transferring item:', err);
+      setError('Failed to transfer item: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -296,8 +537,8 @@ const JohnnyCMS = () => {
   };
 
   const handleAddInventoryItem = async () => {
-    if (!newInventoryItem.name || !newInventoryItem.category) {
-      setError('Please fill in required fields');
+    if (!newInventoryItem.name || !newInventoryItem.category || !newInventoryItem.warehouse_id) {
+      setError('Please fill in required fields including warehouse');
       return;
     }
 
@@ -308,7 +549,6 @@ const JohnnyCMS = () => {
       const itemData = {
         ...newInventoryItem,
         sku: newInventoryItem.sku || generateSKU(newInventoryItem.category),
-        location: currentUser?.branch || 'Main Warehouse',
         created_by: currentUser?.username
       };
 
@@ -337,8 +577,8 @@ const JohnnyCMS = () => {
         reorder_point: 0,
         unit_price: 0,
         supplier_id: '',
-        expiry_date: '',
-        location: ''
+        warehouse_id: '',
+        expiry_date: ''
       });
       setEditingItem(null);
       setShowInventoryModal(false);
@@ -1303,16 +1543,49 @@ const JohnnyCMS = () => {
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">Inventory Management</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  {currentUser?.role === 'admin' ? 'Managing all locations' : `Location: ${currentUser?.branch}`}
+                  {currentUser?.role === 'admin' 
+                    ? `Managing ${selectedWarehouse === 'all' ? 'all warehouses' : warehouses.find(w => w.id === parseInt(selectedWarehouse))?.name || 'warehouse'}` 
+                    : `Warehouse: ${warehouses.find(w => w.id === currentUser?.warehouse_id)?.name || 'N/A'}`
+                  }
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                {currentUser?.role === 'admin' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowWarehouseModal(true);
+                        setEditingWarehouse(null);
+                        setNewWarehouse({
+                          name: '',
+                          branch: '',
+                          address: '',
+                          manager: '',
+                          phone: '',
+                          email: '',
+                          status: 'active'
+                        });
+                      }}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center"
+                    >
+                      <Archive className="w-4 h-4 mr-2" />
+                      Warehouses
+                    </button>
+                    <button
+                      onClick={() => setShowTransferModal(true)}
+                      className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition flex items-center"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Transfer
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => setShowInventoryCategoryModal(true)}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
                 >
                   <Layers className="w-4 h-4 mr-2" />
-                  Manage Categories
+                  Categories
                 </button>
                 {currentUser?.role === 'admin' && (
                   <button
@@ -1320,7 +1593,7 @@ const JohnnyCMS = () => {
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
                   >
                     <Users className="w-4 h-4 mr-2" />
-                    Add Supplier
+                    Suppliers
                   </button>
                 )}
                 <button
@@ -1334,9 +1607,9 @@ const JohnnyCMS = () => {
                       notes: ''
                     });
                   }}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center"
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition flex items-center"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                  <ShoppingCart className="w-4 h-4 mr-2" />
                   Stock Movement
                 </button>
                 <button
@@ -1352,8 +1625,8 @@ const JohnnyCMS = () => {
                       reorder_point: 0,
                       unit_price: 0,
                       supplier_id: '',
-                      expiry_date: '',
-                      location: ''
+                      warehouse_id: '',
+                      expiry_date: ''
                     });
                   }}
                   className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition flex items-center"
@@ -1419,7 +1692,32 @@ const JohnnyCMS = () => {
             {/* Search and Filter */}
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <div className="flex flex-col md:flex-row gap-4">
+                {currentUser?.role === 'admin' && (
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Archive className="inline w-4 h-4 mr-1" />
+                      Warehouse/Branch
+                    </label>
+                    <select
+                      value={selectedWarehouse}
+                      onChange={(e) => {
+                        setSelectedWarehouse(e.target.value);
+                        loadInventory();
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                    >
+                      <option value="all">All Warehouses</option>
+                      {warehouses.map(warehouse => (
+                        <option key={warehouse.id} value={warehouse.id}>
+                          {warehouse.name} - {warehouse.branch}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
                 <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
                   <input
                     type="text"
                     value={searchInventory}
@@ -1430,6 +1728,7 @@ const JohnnyCMS = () => {
                 </div>
                 
                 <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <select
                     value={inventoryFilter.category}
                     onChange={(e) => setInventoryFilter({...inventoryFilter, category: e.target.value})}
@@ -1443,6 +1742,7 @@ const JohnnyCMS = () => {
                 </div>
                 
                 <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                   <select
                     value={inventoryFilter.status}
                     onChange={(e) => setInventoryFilter({...inventoryFilter, status: e.target.value})}
@@ -1455,13 +1755,15 @@ const JohnnyCMS = () => {
                   </select>
                 </div>
                 
-                <button 
-                  onClick={loadInventory}
-                  className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
-                >
-                  <Search className="inline-block w-4 h-4 mr-2" />
-                  Refresh
-                </button>
+                <div className="flex items-end">
+                  <button 
+                    onClick={loadInventory}
+                    className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
+                  >
+                    <Search className="inline-block w-4 h-4 mr-2" />
+                    Refresh
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1484,7 +1786,7 @@ const JohnnyCMS = () => {
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total Value</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Expiry</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Location</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Warehouse</th>
                         {currentUser?.role === 'admin' && (
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                         )}
@@ -1543,6 +1845,14 @@ const JohnnyCMS = () => {
                               )}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-700">{item.location}</td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm text-gray-700 font-medium">
+                                {item.warehouses?.name || 'N/A'}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {item.warehouses?.branch}
+                              </div>
+                            </td>
                             {currentUser?.role === 'admin' && (
                               <td className="px-4 py-3">
                                 <button
@@ -2504,14 +2814,19 @@ const JohnnyCMS = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                <input
-                  type="text"
-                  value={newInventoryItem.location}
-                  onChange={(e) => setNewInventoryItem({...newInventoryItem, location: e.target.value})}
+                <label className="block text-sm font-medium text-gray-700 mb-2">Warehouse/Branch *</label>
+                <select
+                  value={newInventoryItem.warehouse_id}
+                  onChange={(e) => setNewInventoryItem({...newInventoryItem, warehouse_id: e.target.value})}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                  placeholder={currentUser?.branch || 'Enter location'}
-                />
+                >
+                  <option value="">Select Warehouse</option>
+                  {warehouses.filter(w => w.status === 'active').map(warehouse => (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name} - {warehouse.branch}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -2744,6 +3059,380 @@ const JohnnyCMS = () => {
                     <Loader className="animate-spin w-5 h-5" />
                   ) : (
                     'Record Movement'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WAREHOUSE MANAGEMENT MODAL */}
+      {showWarehouseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 my-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                <Archive className="inline w-5 h-5 mr-2" />
+                Warehouse / Branch Management
+              </h3>
+              <button
+                onClick={() => {
+                  setShowWarehouseModal(false);
+                  setEditingWarehouse(null);
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Add/Edit Warehouse Form */}
+            <div className="bg-gray-50 p-6 rounded-lg mb-6">
+              <h4 className="text-sm font-semibold text-gray-700 mb-4">
+                {editingWarehouse ? 'Edit Warehouse' : 'Add New Warehouse/Branch'}
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Warehouse Name *</label>
+                  <input
+                    type="text"
+                    value={newWarehouse.name}
+                    onChange={(e) => setNewWarehouse({...newWarehouse, name: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="e.g., Main Warehouse, Central Storage"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Branch Name *</label>
+                  <input
+                    type="text"
+                    value={newWarehouse.branch}
+                    onChange={(e) => setNewWarehouse({...newWarehouse, branch: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="e.g., Johar Town, DHA, Gulberg"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                  <input
+                    type="text"
+                    value={newWarehouse.address}
+                    onChange={(e) => setNewWarehouse({...newWarehouse, address: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="Full address"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Manager</label>
+                  <input
+                    type="text"
+                    value={newWarehouse.manager}
+                    onChange={(e) => setNewWarehouse({...newWarehouse, manager: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="Manager name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                  <input
+                    type="tel"
+                    value={newWarehouse.phone}
+                    onChange={(e) => setNewWarehouse({...newWarehouse, phone: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="+92-XXX-XXXXXXX"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={newWarehouse.email}
+                    onChange={(e) => setNewWarehouse({...newWarehouse, email: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="warehouse@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select
+                    value={newWarehouse.status}
+                    onChange={(e) => setNewWarehouse({...newWarehouse, status: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    setEditingWarehouse(null);
+                    setNewWarehouse({
+                      name: '',
+                      branch: '',
+                      address: '',
+                      manager: '',
+                      phone: '',
+                      email: '',
+                      status: 'active'
+                    });
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={handleAddWarehouse}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center justify-center"
+                >
+                  {loading ? (
+                    <Loader className="animate-spin w-5 h-5" />
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      {editingWarehouse ? 'Update' : 'Add'} Warehouse
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Warehouses List */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-4">
+                Existing Warehouses ({warehouses.length})
+              </h4>
+              {warehouses.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">No warehouses yet. Add one above!</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                  {warehouses.map((warehouse) => (
+                    <div key={warehouse.id} className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h5 className="font-semibold text-gray-800 text-lg">{warehouse.name}</h5>
+                          <p className="text-sm text-indigo-600 font-medium">{warehouse.branch}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          warehouse.status === 'active' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {warehouse.status}
+                        </span>
+                      </div>
+                      
+                      {warehouse.address && (
+                        <p className="text-sm text-gray-600 mb-2">📍 {warehouse.address}</p>
+                      )}
+                      
+                      {warehouse.manager && (
+                        <p className="text-sm text-gray-600 mb-1">👤 {warehouse.manager}</p>
+                      )}
+                      
+                      {warehouse.phone && (
+                        <p className="text-sm text-gray-600 mb-1">📞 {warehouse.phone}</p>
+                      )}
+                      
+                      {warehouse.email && (
+                        <p className="text-sm text-gray-600 mb-3">✉️ {warehouse.email}</p>
+                      )}
+                      
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            setEditingWarehouse(warehouse);
+                            setNewWarehouse(warehouse);
+                          }}
+                          className="flex-1 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition flex items-center justify-center text-sm"
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteWarehouse(warehouse.id)}
+                          className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center justify-center text-sm"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowWarehouseModal(false);
+                  setEditingWarehouse(null);
+                  setError('');
+                }}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TRANSFER ITEMS MODAL */}
+      {showTransferModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                <RefreshCw className="inline w-5 h-5 mr-2" />
+                Transfer Items Between Warehouses
+              </h3>
+              <button
+                onClick={() => {
+                  setShowTransferModal(false);
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> This will move inventory from one warehouse to another. Make sure quantities are correct.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Item *</label>
+                <select
+                  value={newTransfer.item_id}
+                  onChange={(e) => setNewTransfer({...newTransfer, item_id: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                >
+                  <option value="">Select an item</option>
+                  {inventoryItems.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} ({item.sku}) - {item.warehouses?.name} - Qty: {item.quantity} {item.unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">From Warehouse *</label>
+                  <select
+                    value={newTransfer.from_warehouse_id}
+                    onChange={(e) => setNewTransfer({...newTransfer, from_warehouse_id: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                  >
+                    <option value="">Select source</option>
+                    {warehouses.filter(w => w.status === 'active').map(warehouse => (
+                      <option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name} - {warehouse.branch}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">To Warehouse *</label>
+                  <select
+                    value={newTransfer.to_warehouse_id}
+                    onChange={(e) => setNewTransfer({...newTransfer, to_warehouse_id: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                  >
+                    <option value="">Select destination</option>
+                    {warehouses.filter(w => w.status === 'active').map(warehouse => (
+                      <option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name} - {warehouse.branch}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Quantity to Transfer *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newTransfer.quantity}
+                  onChange={(e) => setNewTransfer({...newTransfer, quantity: parseFloat(e.target.value) || 0})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                  placeholder="Enter quantity"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Transfer Date</label>
+                <input
+                  type="date"
+                  value={newTransfer.transfer_date}
+                  onChange={(e) => setNewTransfer({...newTransfer, transfer_date: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reference Number</label>
+                <input
+                  type="text"
+                  value={newTransfer.reference_number}
+                  onChange={(e) => setNewTransfer({...newTransfer, reference_number: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                  placeholder="Transfer ID, Document #, etc."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <textarea
+                  value={newTransfer.notes}
+                  onChange={(e) => setNewTransfer({...newTransfer, notes: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none h-20 resize-none"
+                  placeholder="Reason for transfer, additional details..."
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowTransferModal(false);
+                    setError('');
+                  }}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleTransferItem}
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition flex items-center justify-center"
+                >
+                  {loading ? (
+                    <Loader className="animate-spin w-5 h-5" />
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Complete Transfer
+                    </>
                   )}
                 </button>
               </div>
