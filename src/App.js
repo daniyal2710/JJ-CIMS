@@ -213,8 +213,8 @@ const JohnnyCMS = () => {
         .from('inventory_items')
         .select('*, suppliers(name), warehouses(name, branch)');
       
-      // Filter by warehouse/branch
-      if (currentUser?.role !== 'admin') {
+      // Filter by warehouse/branch - Support and Admin see all
+      if (currentUser?.role !== 'admin' && currentUser?.role !== 'support') {
         query = query.eq('warehouse_id', currentUser?.warehouse_id);
       } else if (selectedWarehouse !== 'all') {
         query = query.eq('warehouse_id', selectedWarehouse);
@@ -753,7 +753,8 @@ const JohnnyCMS = () => {
         .from('complaints')
         .select('*');
       
-      if (currentUser?.role !== 'admin') {
+      // Support and Admin see all branches, regular users see only their branch
+      if (currentUser?.role !== 'admin' && currentUser?.role !== 'support') {
         query = query.eq('branch', currentUser?.branch);
       }
       
@@ -1618,34 +1619,36 @@ const JohnnyCMS = () => {
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">Inventory Management</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  {currentUser?.role === 'admin' 
+                  {(currentUser?.role === 'admin' || currentUser?.role === 'support')
                     ? `Managing ${selectedWarehouse === 'all' ? 'all warehouses' : warehouses.find(w => w.id === parseInt(selectedWarehouse))?.name || 'warehouse'}` 
                     : `Warehouse: ${warehouses.find(w => w.id === currentUser?.warehouse_id)?.name || 'N/A'}`
                   }
                 </p>
               </div>
               <div className="flex gap-2 flex-wrap">
-                {currentUser?.role === 'admin' && (
+                {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
                   <>
-                    <button
-                      onClick={() => {
-                        setShowWarehouseModal(true);
-                        setEditingWarehouse(null);
-                        setNewWarehouse({
-                          name: '',
-                          branch: '',
-                          address: '',
-                          manager: '',
-                          phone: '',
-                          email: '',
-                          status: 'active'
-                        });
-                      }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center"
-                    >
-                      <Archive className="w-4 h-4 mr-2" />
-                      Warehouses
-                    </button>
+                    {currentUser?.role === 'admin' && (
+                      <button
+                        onClick={() => {
+                          setShowWarehouseModal(true);
+                          setEditingWarehouse(null);
+                          setNewWarehouse({
+                            name: '',
+                            branch: '',
+                            address: '',
+                            manager: '',
+                            phone: '',
+                            email: '',
+                            status: 'active'
+                          });
+                        }}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center"
+                      >
+                        <Archive className="w-4 h-4 mr-2" />
+                        Warehouses
+                      </button>
+                    )}
                     <button
                       onClick={() => setShowTransferModal(true)}
                       className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition flex items-center"
@@ -1767,7 +1770,7 @@ const JohnnyCMS = () => {
             {/* Search and Filter */}
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <div className="flex flex-col md:flex-row gap-4">
-                {currentUser?.role === 'admin' && (
+                {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       <Archive className="inline w-4 h-4 mr-1" />
@@ -2061,9 +2064,12 @@ const JohnnyCMS = () => {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {currentUser?.role === 'admin' ? 'Analytics Dashboard - All Branches' : `Analytics Dashboard - ${currentUser?.branch}`}
+                  {(currentUser?.role === 'admin' || currentUser?.role === 'support')
+                    ? 'Analytics Dashboard - All Branches' 
+                    : `Analytics Dashboard - ${currentUser?.branch}`
+                  }
                 </h2>
-                {currentUser?.role !== 'admin' && (
+                {currentUser?.role !== 'admin' && currentUser?.role !== 'support' && (
                   <p className="text-sm text-gray-600 mt-1">Viewing analytics for your branch only</p>
                 )}
               </div>
@@ -2222,7 +2228,10 @@ const JohnnyCMS = () => {
 
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  {currentUser?.role === 'admin' ? 'Branch Performance' : 'My Branch Performance'}
+                  {(currentUser?.role === 'admin' || currentUser?.role === 'support') 
+                    ? 'Branch Performance' 
+                    : 'My Branch Performance'
+                  }
                 </h3>
                 <div className="space-y-3 max-h-80 overflow-y-auto">
                   {getBranchPerformance().map((branch, idx) => (
@@ -2254,9 +2263,12 @@ const JohnnyCMS = () => {
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                {currentUser?.role === 'admin' ? 'Complaint Management - All Branches' : `Complaint Management - ${currentUser?.branch}`}
+                {(currentUser?.role === 'admin' || currentUser?.role === 'support')
+                  ? 'Complaint Management - All Branches' 
+                  : `Complaint Management - ${currentUser?.branch}`
+                }
               </h2>
-              {currentUser?.role !== 'admin' && (
+              {currentUser?.role !== 'admin' && currentUser?.role !== 'support' && (
                 <p className="text-sm text-gray-600 mb-6">Viewing complaints for your branch only</p>
               )}
               
