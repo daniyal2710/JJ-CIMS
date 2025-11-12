@@ -62,6 +62,11 @@ const JohnnyCMS = () => {
     notes: ''
   });
 
+  const [transferDateFilter, setTransferDateFilter] = useState({
+    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  });
+
   const [newInventoryItem, setNewInventoryItem] = useState({
     name: '',
     sku: '',
@@ -95,7 +100,8 @@ const JohnnyCMS = () => {
     department: 'IT',
     category: '',
     comments: '',
-    priority: 'Medium'
+    priority: 'Medium',
+    assigned_to: ''
   });
 
   const [filterData, setFilterData] = useState({
@@ -453,11 +459,20 @@ const JohnnyCMS = () => {
 
   const loadStockMovements = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('stock_movements')
         .select('*, inventory_items(name, sku)')
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
+      
+      // Apply date filter if set
+      if (transferDateFilter.startDate) {
+        query = query.gte('created_at', transferDateFilter.startDate + 'T00:00:00');
+      }
+      if (transferDateFilter.endDate) {
+        query = query.lte('created_at', transferDateFilter.endDate + 'T23:59:59');
+      }
+      
+      const { data, error } = await query.limit(100);
       
       if (error) throw error;
       setStockMovements(data || []);
@@ -825,6 +840,7 @@ const JohnnyCMS = () => {
           priority: newComplaint.priority,
           status: 'Open',
           branch: currentUser?.branch || 'Unknown',
+          assigned_to: newComplaint.assigned_to || null,
           created_by: currentUser?.username || 'unknown'
         }])
         .select();
@@ -832,7 +848,7 @@ const JohnnyCMS = () => {
       if (error) throw error;
       
       await loadComplaints();
-      setNewComplaint({ department: 'IT', category: '', comments: '', priority: 'Medium' });
+      setNewComplaint({ department: 'IT', category: '', comments: '', priority: 'Medium', assigned_to: '' });
       setCurrentView('dashboard');
       
       alert(`Complaint created successfully!\nComplaint Number: ${complaintNumber}`);
@@ -871,6 +887,24 @@ const JohnnyCMS = () => {
     } catch (err) {
       console.error('Error updating priority:', err);
       setError('Failed to update priority');
+    }
+  };
+
+  const handleAssignmentChange = async (complaintId, assignedTo) => {
+    try {
+      const { error } = await supabase
+        .from('complaints')
+        .update({ 
+          assigned_to: assignedTo || null, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', complaintId);
+      
+      if (error) throw error;
+      await loadComplaints();
+    } catch (err) {
+      console.error('Error updating assignment:', err);
+      setError('Failed to update assignment');
     }
   };
 
@@ -1237,6 +1271,39 @@ const JohnnyCMS = () => {
     doc.save(`JJ_Complaints_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
+  const exportTransfersToPDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Johnny & Jugnu - Stock Movements Report', 14, 20);
+    
+    doc.setFontSize(11);
+    doc.text(`Date Range: ${transferDateFilter.startDate} to ${transferDateFilter.endDate}`, 14, 30);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 37);
+    doc.text(`Total Movements: ${stockMovements.length}`, 14, 44);
+    
+    const tableData = stockMovements.map(m => [
+      new Date(m.created_at).toLocaleDateString(),
+      m.movement_type,
+      m.inventory_items?.name || 'N/A',
+      m.inventory_items?.sku || 'N/A',
+      m.quantity.toString(),
+      warehouses.find(w => w.id === m.from_warehouse_id)?.name || '-',
+      warehouses.find(w => w.id === m.to_warehouse_id)?.name || '-',
+      m.reference_number || '-'
+    ]);
+    
+    doc.autoTable({
+      startY: 50,
+      head: [['Date', 'Type', 'Item', 'SKU', 'Qty', 'From', 'To', 'Ref #']],
+      body: tableData,
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [99, 102, 241] }
+    });
+    
+    doc.save(`JJ_Transfers_${transferDateFilter.startDate}_to_${transferDateFilter.endDate}.pdf`);
+  };
+
   const filteredComplaints = complaints.filter(c => {
     if (filterData.status !== 'all' && c.status.toLowerCase() !== filterData.status) return false;
     if (filterData.priority !== 'all' && c.priority !== filterData.priority) return false;
@@ -1451,7 +1518,13 @@ const JohnnyCMS = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">Johnny and Jugnu</h1>
-                <p className="text-sm text-orange-100">Management System - {currentUser?.role === 'admin' ? 'Admin' : 'User'} ({currentUser?.username})</p>
+                <p className="text-sm text-orange-100">
+                  Management System - {
+                    currentUser?.role === 'admin' ? 'Admin' : 
+                    currentUser?.role === 'support' ? 'Support' : 
+                    'User'
+                  } ({currentUser?.username})
+                </p>
               </div>
             </div>
             
@@ -1470,13 +1543,15 @@ const JohnnyCMS = () => {
                 <FileText className="inline-block w-4 h-4 mr-2" />
                 Complaints
               </button>
-              <button
-                onClick={() => setCurrentView('inventory')}
-                className={`px-4 py-2 rounded-lg transition ${currentView === 'inventory' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-              >
-                <Package className="inline-block w-4 h-4 mr-2" />
-                Inventory
-              </button>
+              {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
+                <button
+                  onClick={() => setCurrentView('inventory')}
+                  className={`px-4 py-2 rounded-lg transition ${currentView === 'inventory' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+                >
+                  <Package className="inline-block w-4 h-4 mr-2" />
+                  Inventory
+                </button>
+              )}
               <button
                 onClick={() => setCurrentView('add')}
                 className={`px-4 py-2 rounded-lg transition ${currentView === 'add' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
@@ -1498,7 +1573,7 @@ const JohnnyCMS = () => {
                     className={`px-4 py-2 rounded-lg transition ${currentView === 'categories' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
                   >
                     <Tag className="inline-block w-4 h-4 mr-2" />
-                    Categories
+                    Complaint Categories
                   </button>
                 </>
               )}
@@ -1585,7 +1660,7 @@ const JohnnyCMS = () => {
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
                 >
                   <Layers className="w-4 h-4 mr-2" />
-                  Categories
+                  Asset Type
                 </button>
                 {currentUser?.role === 'admin' && (
                   <button
@@ -1728,13 +1803,13 @@ const JohnnyCMS = () => {
                 </div>
                 
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Asset Type</label>
                   <select
                     value={inventoryFilter.category}
                     onChange={(e) => setInventoryFilter({...inventoryFilter, category: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
                   >
-                    <option value="all">All Categories</option>
+                    <option value="all">All Asset Types</option>
                     {inventoryCategories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
@@ -1884,7 +1959,52 @@ const JohnnyCMS = () => {
 
             {/* Recent Stock Movements */}
             <div className="mt-6 bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Stock Movements</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Stock Movements & Transfers</h3>
+                <button
+                  onClick={exportTransfersToPDF}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export PDF
+                </button>
+              </div>
+
+              {/* Date Filter */}
+              <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={transferDateFilter.startDate}
+                    onChange={(e) => setTransferDateFilter({...transferDateFilter, startDate: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={transferDateFilter.endDate}
+                    onChange={(e) => setTransferDateFilter({...transferDateFilter, endDate: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={loadStockMovements}
+                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center justify-center"
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Apply Filter
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                Showing {stockMovements.length} movements from {transferDateFilter.startDate} to {transferDateFilter.endDate}
+              </p>
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -2319,6 +2439,7 @@ const JohnnyCMS = () => {
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Comments</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Assigned To</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
                         {currentUser?.role === 'admin' && (
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created By</th>
@@ -2335,7 +2456,7 @@ const JohnnyCMS = () => {
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-700">{complaint.date}</td>
                           <td className="px-4 py-3">
-                            {currentUser?.role === 'admin' ? (
+                            {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
                               <select
                                 value={complaint.priority}
                                 onChange={(e) => handlePriorityChange(complaint.id, e.target.value)}
@@ -2356,7 +2477,7 @@ const JohnnyCMS = () => {
                           <td className="px-4 py-3 text-sm text-gray-700">{complaint.category}</td>
                           <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">{complaint.comments}</td>
                           <td className="px-4 py-3">
-                            {currentUser?.role === 'admin' ? (
+                            {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
                               <select
                                 value={complaint.status}
                                 onChange={(e) => handleStatusChange(complaint.id, e.target.value)}
@@ -2379,6 +2500,32 @@ const JohnnyCMS = () => {
                                 'bg-green-100 text-green-700'
                               }`}>
                                 {complaint.status}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
+                              <select
+                                value={complaint.assigned_to || ''}
+                                onChange={(e) => handleAssignmentChange(complaint.id, e.target.value)}
+                                className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white"
+                              >
+                                <option value="">Unassigned</option>
+                                {users.filter(u => u.role === 'support' || u.role === 'admin').map((user) => (
+                                  <option key={user.id} value={user.username}>
+                                    {user.username}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-sm text-gray-700">
+                                {complaint.assigned_to ? (
+                                  <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold">
+                                    👤 {complaint.assigned_to}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">Unassigned</span>
+                                )}
                               </span>
                             )}
                           </td>
@@ -2450,6 +2597,29 @@ const JohnnyCMS = () => {
                       <option value="High">🔴 High - Urgent!</option>
                     </select>
                   </div>
+
+                  {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Assign To (Optional)
+                      </label>
+                      <select
+                        value={newComplaint.assigned_to}
+                        onChange={(e) => setNewComplaint({...newComplaint, assigned_to: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                      >
+                        <option value="">Unassigned</option>
+                        {users.filter(u => u.role === 'support' || u.role === 'admin').map((user) => (
+                          <option key={user.id} value={user.username}>
+                            {user.username} - {user.role.charAt(0).toUpperCase() + user.role.slice(1)} ({user.branch})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Assign this complaint to a support or admin user
+                      </p>
+                    </div>
+                  )}
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Comments *</label>
@@ -2553,9 +2723,11 @@ const JohnnyCMS = () => {
                         <td className="px-6 py-4 text-sm text-gray-700">{user.email}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                            user.role === 'admin' ? 'bg-red-100 text-red-700' : 
+                            user.role === 'support' ? 'bg-purple-100 text-purple-700' :
+                            'bg-blue-100 text-blue-700'
                           }`}>
-                            {user.role}
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">{user.branch}</td>
@@ -2733,7 +2905,7 @@ const JohnnyCMS = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Asset Type *</label>
                 <select
                   value={newInventoryItem.category}
                   onChange={(e) => setNewInventoryItem({...newInventoryItem, category: e.target.value})}
@@ -3446,7 +3618,7 @@ const JohnnyCMS = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-gray-800">Manage Inventory Categories</h3>
+              <h3 className="text-xl font-bold text-gray-800">Manage Asset Types</h3>
               <button
                 onClick={() => {
                   setShowInventoryCategoryModal(false);
@@ -3458,9 +3630,9 @@ const JohnnyCMS = () => {
               </button>
             </div>
 
-            {/* Add New Category */}
+            {/* Add New Asset Type */}
             <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Category</h4>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Asset Type</h4>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -3468,7 +3640,7 @@ const JohnnyCMS = () => {
                   onChange={(e) => setNewInventoryCategory(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleAddInventoryCategory()}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-                  placeholder="Enter category name (e.g., Frozen Items, Dairy Products)"
+                  placeholder="Enter asset type (e.g., Frozen Items, Dairy Products)"
                   disabled={loading}
                 />
                 <button
@@ -3488,9 +3660,9 @@ const JohnnyCMS = () => {
               </div>
             </div>
 
-            {/* Default Categories */}
+            {/* Default Asset Types */}
             <div className="mb-6">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">Default Categories (Built-in)</h4>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Default Asset Types (Built-in)</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {['Raw Materials', 'Ingredients', 'Packaging', 'Beverages', 'Sauces', 'Supplies', 'Equipment'].map((cat) => (
                   <div key={cat} className="border border-gray-300 bg-gray-100 rounded-lg p-3 flex items-center justify-between">
@@ -3504,13 +3676,13 @@ const JohnnyCMS = () => {
               </div>
             </div>
 
-            {/* Custom Categories */}
+            {/* Custom Asset Types */}
             <div>
               <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                Custom Categories ({customInventoryCategories.length})
+                Custom Asset Types ({customInventoryCategories.length})
               </h4>
               {customInventoryCategories.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">No custom categories yet. Add one above!</p>
+                <p className="text-sm text-gray-500 text-center py-8">No custom asset types yet. Add one above!</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {customInventoryCategories.map((cat) => (
@@ -3612,8 +3784,12 @@ const JohnnyCMS = () => {
                   disabled={loading}
                 >
                   <option value="user">User</option>
+                  <option value="support">Support</option>
                   <option value="admin">Admin</option>
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  User: View only • Support: View + Update • Admin: Full access
+                </p>
               </div>
 
               <div>
