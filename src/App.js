@@ -1617,12 +1617,6 @@ const JohnnyCMS = () => {
                   'Log In'
                 )}
               </button>
-
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-800">
-                <p className="font-semibold mb-1">Demo Credentials:</p>
-                <p>Admin: admin / admin123</p>
-                <p>User: user1 / user123</p>
-              </div>
             </div>
           </div>
         </div>
