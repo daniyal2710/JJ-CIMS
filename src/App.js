@@ -31,6 +31,34 @@ const JohnnyCMS = () => {
   const [showInventoryCategoryModal, setShowInventoryCategoryModal] = useState(false);
   const [showWarehouseModal, setShowWarehouseModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showComplaintRemarkModal, setShowComplaintRemarkModal] = useState(false);
+  const [showComplaintRCAModal, setShowComplaintRCAModal] = useState(false);
+  const [complaintRemarkData, setComplaintRemarkData] = useState({
+    complaintId: null,
+    newStatus: '',
+    remarks: ''
+  });
+  const [complaintRCAData, setComplaintRCAData] = useState({
+    complaintId: null,
+    rca: '',
+    remarks: ''
+  });
+  
+  const rcaOptions = [
+    'Technical Issue',
+    'User Error',
+    'Hardware Failure',
+    'Software Bug',
+    'Network Problem',
+    'Configuration Error',
+    'Maintenance Required',
+    'Third Party Issue',
+    'Power Failure',
+    'Environmental Factor',
+    'Training Gap',
+    'Process Issue',
+    'Other'
+  ];
   const [editingItem, setEditingItem] = useState(null);
   const [editingWarehouse, setEditingWarehouse] = useState(null);
   const [searchInventory, setSearchInventory] = useState('');
@@ -90,11 +118,13 @@ const JohnnyCMS = () => {
 
   const [newStockMovement, setNewStockMovement] = useState({
     item_id: '',
-    movement_type: 'receipt',
+    movement_type: 'new',
     quantity: 0,
     reference_number: '',
     notes: ''
   });
+
+  const movementTypes = ['scrap', 'faulty', 'extra', 'new'];
 
   const [newComplaint, setNewComplaint] = useState({
     department: 'IT',
@@ -862,6 +892,32 @@ const JohnnyCMS = () => {
   };
 
   const handleStatusChange = async (complaintId, newStatus) => {
+    const currentComplaint = complaints.find(c => c.id === complaintId);
+    const currentStatus = currentComplaint?.status;
+    
+    // If changing to Parked or Pending, show remarks modal
+    if ((newStatus === 'Parking' || newStatus === 'Pending') && currentStatus === 'Open') {
+      setComplaintRemarkData({
+        complaintId: complaintId,
+        newStatus: newStatus,
+        remarks: ''
+      });
+      setShowComplaintRemarkModal(true);
+      return;
+    }
+    
+    // If changing to Resolved, show RCA modal
+    if (newStatus === 'Resolved' && ['Open', 'Parking', 'Pending'].includes(currentStatus)) {
+      setComplaintRCAData({
+        complaintId: complaintId,
+        rca: '',
+        remarks: ''
+      });
+      setShowComplaintRCAModal(true);
+      return;
+    }
+    
+    // Otherwise, update directly
     try {
       const { error } = await supabase
         .from('complaints')
@@ -873,6 +929,75 @@ const JohnnyCMS = () => {
     } catch (err) {
       console.error('Error updating status:', err);
       setError('Failed to update status');
+    }
+  };
+
+  const handleComplaintRemarkSubmit = async () => {
+    if (!complaintRemarkData.remarks.trim()) {
+      setError('Please enter remarks');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const { error } = await supabase
+        .from('complaints')
+        .update({ 
+          status: complaintRemarkData.newStatus,
+          remarks: complaintRemarkData.remarks,
+          updated_at: new Date().toISOString(),
+          updated_by: currentUser?.username
+        })
+        .eq('id', complaintRemarkData.complaintId);
+      
+      if (error) throw error;
+      
+      await loadComplaints();
+      setShowComplaintRemarkModal(false);
+      setComplaintRemarkData({ complaintId: null, newStatus: '', remarks: '' });
+    } catch (err) {
+      console.error('Error updating status with remarks:', err);
+      setError('Failed to update status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleComplaintRCASubmit = async () => {
+    if (!complaintRCAData.rca) {
+      setError('Please select Root Cause Analysis');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const { error } = await supabase
+        .from('complaints')
+        .update({ 
+          status: 'Resolved',
+          rca: complaintRCAData.rca,
+          resolution_remarks: complaintRCAData.remarks,
+          resolved_at: new Date().toISOString(),
+          resolved_by: currentUser?.username,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', complaintRCAData.complaintId);
+      
+      if (error) throw error;
+      
+      await loadComplaints();
+      setShowComplaintRCAModal(false);
+      setComplaintRCAData({ complaintId: null, rca: '', remarks: '' });
+      alert('Complaint resolved successfully!');
+    } catch (err) {
+      console.error('Error resolving complaint:', err);
+      setError('Failed to resolve complaint');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1658,67 +1783,69 @@ const JohnnyCMS = () => {
                     </button>
                   </>
                 )}
-                <button
-                  onClick={() => setShowInventoryCategoryModal(true)}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
-                >
-                  <Layers className="w-4 h-4 mr-2" />
-                  Asset Type
-                </button>
                 {currentUser?.role === 'admin' && (
-                  <button
-                    onClick={() => setShowSupplierModal(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Suppliers
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setShowInventoryCategoryModal(true)}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
+                    >
+                      <Layers className="w-4 h-4 mr-2" />
+                      Asset Type
+                    </button>
+                    <button
+                      onClick={() => setShowSupplierModal(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Suppliers
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowStockMovementModal(true);
+                        setNewStockMovement({
+                          item_id: '',
+                          movement_type: 'new',
+                          quantity: 0,
+                          reference_number: '',
+                          notes: ''
+                        });
+                      }}
+                      className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition flex items-center"
+                    >
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                      Stock Movement
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowInventoryModal(true);
+                        setEditingItem(null);
+                        setNewInventoryItem({
+                          name: '',
+                          sku: '',
+                          category: 'Raw Materials',
+                          quantity: 0,
+                          unit: 'kg',
+                          reorder_point: 0,
+                          unit_price: 0,
+                          supplier_id: '',
+                          warehouse_id: '',
+                          expiry_date: ''
+                        });
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition flex items-center"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Item
+                    </button>
+                    <button
+                      onClick={exportInventoryToExcel}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export
+                    </button>
+                  </>
                 )}
-                <button
-                  onClick={() => {
-                    setShowStockMovementModal(true);
-                    setNewStockMovement({
-                      item_id: '',
-                      movement_type: 'receipt',
-                      quantity: 0,
-                      reference_number: '',
-                      notes: ''
-                    });
-                  }}
-                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition flex items-center"
-                >
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Stock Movement
-                </button>
-                <button
-                  onClick={() => {
-                    setShowInventoryModal(true);
-                    setEditingItem(null);
-                    setNewInventoryItem({
-                      name: '',
-                      sku: '',
-                      category: 'Raw Materials',
-                      quantity: 0,
-                      unit: 'kg',
-                      reorder_point: 0,
-                      unit_price: 0,
-                      supplier_id: '',
-                      warehouse_id: '',
-                      expiry_date: ''
-                    });
-                  }}
-                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition flex items-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Item
-                </button>
-                <button
-                  onClick={exportInventoryToExcel}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </button>
               </div>
             </div>
 
@@ -2032,18 +2159,19 @@ const JohnnyCMS = () => {
                           <div className="text-xs text-gray-500">{movement.inventory_items?.sku}</div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            movement.movement_type === 'receipt' ? 'bg-green-100 text-green-700' :
-                            movement.movement_type === 'usage' ? 'bg-blue-100 text-blue-700' :
-                            movement.movement_type === 'wastage' ? 'bg-red-100 text-red-700' :
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${
+                            movement.movement_type === 'scrap' ? 'bg-red-100 text-red-700' :
+                            movement.movement_type === 'faulty' ? 'bg-orange-100 text-orange-700' :
+                            movement.movement_type === 'extra' ? 'bg-green-100 text-green-700' :
+                            movement.movement_type === 'new' ? 'bg-blue-100 text-blue-700' :
                             movement.movement_type === 'transfer' ? 'bg-purple-100 text-purple-700' :
-                            'bg-yellow-100 text-yellow-700'
+                            'bg-gray-100 text-gray-700'
                           }`}>
                             {movement.movement_type}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm font-semibold text-gray-700">
-                          {movement.movement_type === 'receipt' || movement.movement_type === 'return' ? '+' : '-'}
+                          {movement.movement_type === 'extra' || movement.movement_type === 'new' ? '+' : '-'}
                           {movement.quantity}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">{movement.reference_number || '-'}</td>
@@ -3183,11 +3311,10 @@ const JohnnyCMS = () => {
                   onChange={(e) => setNewStockMovement({...newStockMovement, movement_type: e.target.value})}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
                 >
-                  <option value="receipt">Receipt (Add Stock)</option>
-                  <option value="usage">Usage (Remove Stock)</option>
-                  <option value="wastage">Wastage (Remove Stock)</option>
-                  <option value="transfer">Transfer</option>
-                  <option value="return">Return (Add Stock)</option>
+                  <option value="scrap">Scrap</option>
+                  <option value="faulty">Faulty</option>
+                  <option value="extra">Extra</option>
+                  <option value="new">New</option>
                 </select>
               </div>
 
@@ -3620,6 +3747,178 @@ const JohnnyCMS = () => {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* COMPLAINT REMARK MODAL (for Parked/Pending status) */}
+      {showComplaintRemarkModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Add Complaint Remarks</h3>
+              <button
+                onClick={() => {
+                  setShowComplaintRemarkModal(false);
+                  setComplaintRemarkData({ complaintId: null, newStatus: '', remarks: '' });
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Status changing to: {complaintRemarkData.newStatus}</strong>
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Please provide remarks explaining the reason for this status change.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Remarks *
+                </label>
+                <textarea
+                  value={complaintRemarkData.remarks}
+                  onChange={(e) => setComplaintRemarkData({...complaintRemarkData, remarks: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-32 resize-none"
+                  placeholder="Enter detailed remarks about why this complaint is being moved to this status..."
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowComplaintRemarkModal(false);
+                  setComplaintRemarkData({ complaintId: null, newStatus: '', remarks: '' });
+                  setError('');
+                }}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleComplaintRemarkSubmit}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center"
+              >
+                {loading ? (
+                  <Loader className="animate-spin w-5 h-5" />
+                ) : (
+                  'Update Status'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* COMPLAINT RCA MODAL (for Resolved status) */}
+      {showComplaintRCAModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Resolve Complaint</h3>
+              <button
+                onClick={() => {
+                  setShowComplaintRCAModal(false);
+                  setComplaintRCAData({ complaintId: null, rca: '', remarks: '' });
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="mb-6 space-y-4">
+              <div className="bg-green-50 border-l-4 border-green-500 p-4">
+                <p className="text-sm text-green-800">
+                  <strong>Resolving Complaint</strong>
+                </p>
+                <p className="text-xs text-green-600 mt-1">
+                  Please select the Root Cause Analysis (RCA) before marking as resolved.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Root Cause Analysis (RCA) *
+                </label>
+                <select
+                  value={complaintRCAData.rca}
+                  onChange={(e) => setComplaintRCAData({...complaintRCAData, rca: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  disabled={loading}
+                >
+                  <option value="">Select RCA...</option>
+                  {rcaOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Resolution Remarks (Optional)
+                </label>
+                <textarea
+                  value={complaintRCAData.remarks}
+                  onChange={(e) => setComplaintRCAData({...complaintRCAData, remarks: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none h-24 resize-none"
+                  placeholder="Add any additional details about the resolution..."
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowComplaintRCAModal(false);
+                  setComplaintRCAData({ complaintId: null, rca: '', remarks: '' });
+                  setError('');
+                }}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleComplaintRCASubmit}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center"
+              >
+                {loading ? (
+                  <Loader className="animate-spin w-5 h-5" />
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Resolve Complaint
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
