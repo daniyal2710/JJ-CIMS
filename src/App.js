@@ -31,6 +31,7 @@ const JohnnyCMS = () => {
   const [showInventoryCategoryModal, setShowInventoryCategoryModal] = useState(false);
   const [showWarehouseModal, setShowWarehouseModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [showComplaintRemarkModal, setShowComplaintRemarkModal] = useState(false);
   const [showComplaintRCAModal, setShowComplaintRCAModal] = useState(false);
   const [complaintRemarkData, setComplaintRemarkData] = useState({
@@ -2445,18 +2446,14 @@ const JohnnyCMS = () => {
             <div className="flex gap-3 mb-6">
               <button
                 onClick={() => {
-                  setShowComplaintModal(true);
-                  setEditingComplaint(null);
                   setNewComplaint({
-                    complaint_number: '',
-                    name: '',
-                    department: '',
+                    department: 'IT',
                     category: '',
-                    description: '',
+                    comments: '',
                     priority: 'Medium',
-                    status: 'Open',
-                    branch: currentUser?.branch || ''
+                    assigned_to: ''
                   });
+                  setCurrentView('add');
                 }}
                 className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md flex items-center"
               >
@@ -2700,6 +2697,15 @@ const JohnnyCMS = () => {
         {/* ADD NEW COMPLAINT */}
         {currentView === 'add' && (
           <div className="max-w-4xl mx-auto">
+            <div className="flex items-center gap-4 mb-6">
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                className="flex items-center text-gray-600 hover:text-gray-800 transition"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to Complaints
+              </button>
+            </div>
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Maintenance Complaint</h2>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
