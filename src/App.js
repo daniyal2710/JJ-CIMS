@@ -2455,6 +2455,27 @@ const JohnnyCMS = () => {
               </div>
             </div>
 
+            {/* Action Buttons */}
+            <div className="flex gap-3 mb-6">
+              <button
+                onClick={() => setShowComplaintModal(true)}
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md flex items-center"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Add New
+              </button>
+              
+              {currentUser?.role === 'admin' && (
+                <button
+                  onClick={() => setShowCategoryModal(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                >
+                  <Layers className="w-5 h-5 mr-2" />
+                  Complaint Categories
+                </button>
+              )}
+            </div>
+
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="mb-6 flex gap-4">
                 <div className="flex-1">
