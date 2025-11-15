@@ -100,6 +100,7 @@ const JohnnyCMS = () => {
     name: '',
     sku: '',
     category: 'Raw Materials',
+    equipment_category: '',
     quantity: 0,
     unit: 'kg',
     reorder_point: 0,
@@ -150,6 +151,39 @@ const JohnnyCMS = () => {
 
   const inventoryCategories = ['Raw Materials', 'Ingredients', 'Packaging', 'Beverages', 'Sauces', 'Supplies', 'Equipment', ...customInventoryCategories];
   const units = ['kg', 'lbs', 'liters', 'pieces', 'boxes', 'bags', 'bottles'];
+  
+  const equipmentCategories = [
+    'Laser Jet Printer',
+    'Thermal Printer',
+    'Mouse',
+    'Keyboard',
+    'LCD',
+    'CPU',
+    'Adapters',
+    'Cameras',
+    'WiFi Router',
+    'Load Balancer',
+    'Network Switch',
+    'POE Switch',
+    'PDU',
+    'Patch Panel',
+    'Cable Manager',
+    'Cable Role',
+    'VGA',
+    'D-Port',
+    'Patch Code',
+    'Numpad',
+    'SS Stand',
+    'Access Control',
+    'Access Control Magnet',
+    'Attendance Machine',
+    'HDMI',
+    'NVR/DVR',
+    'Printer Cartridge',
+    'Cash Drawer',
+    'Server',
+    'Access Point'
+  ];
 
   // Generate unique complaint number in format: JJ-YYYYMMDD-XXXX
   const generateComplaintNumber = async () => {
@@ -618,6 +652,7 @@ const JohnnyCMS = () => {
         name: '',
         sku: '',
         category: 'Raw Materials',
+        equipment_category: '',
         quantity: 0,
         unit: 'kg',
         reorder_point: 0,
@@ -1967,6 +2002,7 @@ const JohnnyCMS = () => {
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">SKU</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Equipment Type</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Quantity</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Unit Price</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total Value</th>
@@ -1995,6 +2031,9 @@ const JohnnyCMS = () => {
                               <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
                                 {item.category}
                               </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {item.equipment_category || '-'}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-700">
                               <span className="font-semibold">{item.quantity}</span> {item.unit}
@@ -3077,6 +3116,22 @@ const JohnnyCMS = () => {
                   ))}
                 </select>
               </div>
+
+              {newInventoryItem.category === 'Equipment' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Equipment Category *</label>
+                  <select
+                    value={newInventoryItem.equipment_category}
+                    onChange={(e) => setNewInventoryItem({...newInventoryItem, equipment_category: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  >
+                    <option value="">Select Equipment Category</option>
+                    {equipmentCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Quantity *</label>
