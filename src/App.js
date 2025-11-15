@@ -1672,13 +1672,6 @@ const JohnnyCMS = () => {
                   Inventory
                 </button>
               )}
-              <button
-                onClick={() => setCurrentView('add')}
-                className={`px-4 py-2 rounded-lg transition ${currentView === 'add' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-              >
-                <Plus className="inline-block w-4 h-4 mr-2" />
-                Add New
-              </button>
               {currentUser?.role === 'admin' && (
                 <>
                   <button
@@ -1687,13 +1680,6 @@ const JohnnyCMS = () => {
                   >
                     <Users className="inline-block w-4 h-4 mr-2" />
                     Users
-                  </button>
-                  <button
-                    onClick={() => setCurrentView('categories')}
-                    className={`px-4 py-2 rounded-lg transition ${currentView === 'categories' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-                  >
-                    <Tag className="inline-block w-4 h-4 mr-2" />
-                    Complaint Categories
                   </button>
                 </>
               )}
@@ -2458,7 +2444,20 @@ const JohnnyCMS = () => {
             {/* Action Buttons */}
             <div className="flex gap-3 mb-6">
               <button
-                onClick={() => setShowComplaintModal(true)}
+                onClick={() => {
+                  setShowComplaintModal(true);
+                  setEditingComplaint(null);
+                  setNewComplaint({
+                    complaint_number: '',
+                    name: '',
+                    department: '',
+                    category: '',
+                    description: '',
+                    priority: 'Medium',
+                    status: 'Open',
+                    branch: currentUser?.branch || ''
+                  });
+                }}
                 className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md flex items-center"
               >
                 <Plus className="w-5 h-5 mr-2" />
