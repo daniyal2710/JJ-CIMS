@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2, X, Loader, Download, TrendingUp, TrendingDown, AlertTriangle, Hash, Package, ShoppingCart, TrendingDown as StockDown, Archive, RefreshCw, Calendar, DollarSign, Layers, ArrowLeft } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 const JohnnyCMS = () => {
@@ -1326,7 +1326,7 @@ const JohnnyCMS = () => {
 
       const doc = new jsPDF();
       doc.text('Petty Cash Report', 14, 15);
-      doc.autoTable({
+      autoTable(doc, {
         head: [['Sr No', 'Month', 'Date', 'Description', 'Invoice No', 'Complaint No', 'Branch', 'Vendor', 'Amount', 'Comments']],
         body: data,
         startY: 25,
@@ -1600,7 +1600,7 @@ const JohnnyCMS = () => {
         c.branch
       ]);
       
-      doc.autoTable({
+      autoTable(doc, {
         startY: 40,
         head: [['Complaint #', 'Date', 'Department', 'Category', 'Priority', 'Status', 'Branch']],
         body: tableData,
@@ -1638,7 +1638,7 @@ const JohnnyCMS = () => {
       m.reference_number || '-'
     ]);
     
-    doc.autoTable({
+    autoTable(doc, {
       startY: 50,
       head: [['Date', 'Type', 'Item', 'SKU', 'Qty', 'From', 'To', 'Ref #']],
       body: tableData,
