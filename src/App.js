@@ -145,9 +145,32 @@ const JohnnyCMS = () => {
 
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showPettyCashModal, setShowPettyCashModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [editingPettyCash, setEditingPettyCash] = useState(null);
   const [newUser, setNewUser] = useState({ username: '', password: '', email: '', role: 'user', branch: '' });
   const [newCategory, setNewCategory] = useState({ name: '', department: 'IT' });
+  const [pettyCashEntries, setPettyCashEntries] = useState([]);
+  const [newPettyCash, setNewPettyCash] = useState({
+    month: new Date().toISOString().slice(0, 7),
+    dated: new Date().toISOString().split('T')[0],
+    description: '',
+    invoice_no: '',
+    complaint_no: '',
+    branch: '',
+    vendor: '',
+    amount: 0,
+    comments: ''
+  });
+  const [pettyCashFilter, setPettyCashFilter] = useState({
+    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    branch: 'all',
+    vendor: 'all'
+  });
+
+  const pettyCashVendors = ['local market', 'DAHUA', 'indriver', 'HAQ enterprise', 'BRAIN TECH', 'NKS', 'Other'];
+  const pettyCashComments = ['New Installation', 'Repairing', 'transportation', 'Maintenance', 'Purchase', 'Other'];
 
   const inventoryCategories = ['Raw Materials', 'Ingredients', 'Packaging', 'Beverages', 'Sauces', 'Supplies', 'Equipment', ...customInventoryCategories];
   const units = ['kg', 'lbs', 'liters', 'pieces', 'boxes', 'bags', 'bottles'];
@@ -236,6 +259,7 @@ const JohnnyCMS = () => {
       loadWarehouses();
       if (currentUser?.role === 'admin') {
         loadUsers();
+        loadPettyCash();
       }
     }
   }, [isLoggedIn, currentUser]);
@@ -1185,6 +1209,137 @@ const JohnnyCMS = () => {
     }
   };
 
+  // Petty Cash Functions
+  const loadPettyCash = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('petty_cash')
+        .select('*')
+        .order('dated', { ascending: false });
+      
+      if (error) throw error;
+      setPettyCashEntries(data || []);
+    } catch (err) {
+      console.error('Error loading petty cash:', err);
+      setError('Failed to load petty cash entries');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPettyCash = async () => {
+    if (!newPettyCash.description || !newPettyCash.branch || !newPettyCash.amount) {
+      setError('Please fill in required fields: Description, Branch, and Amount');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const entryData = {
+        ...newPettyCash,
+        created_by: currentUser?.username
+      };
+
+      if (editingPettyCash) {
+        const { error } = await supabase
+          .from('petty_cash')
+          .update(entryData)
+          .eq('id', editingPettyCash.id);
+        
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('petty_cash')
+          .insert([entryData]);
+        
+        if (error) throw error;
+      }
+      
+      await loadPettyCash();
+      setNewPettyCash({
+        month: new Date().toISOString().slice(0, 7),
+        dated: new Date().toISOString().split('T')[0],
+        description: '',
+        invoice_no: '',
+        complaint_no: '',
+        branch: '',
+        vendor: '',
+        amount: 0,
+        comments: ''
+      });
+      setEditingPettyCash(null);
+      setShowPettyCashModal(false);
+    } catch (err) {
+      console.error('Error saving petty cash entry:', err);
+      setError('Failed to save petty cash entry');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePettyCash = async (entryId) => {
+    if (!window.confirm('Are you sure you want to delete this entry?')) return;
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('petty_cash')
+        .delete()
+        .eq('id', entryId);
+      
+      if (error) throw error;
+      await loadPettyCash();
+    } catch (err) {
+      console.error('Error deleting petty cash entry:', err);
+      setError('Failed to delete entry');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportPettyCashToExcel = () => {
+    const filteredEntries = getFilteredPettyCash();
+    const data = filteredEntries.map((entry, index) => [
+      index + 1,
+      entry.month,
+      entry.dated,
+      entry.description,
+      entry.invoice_no || '',
+      entry.complaint_no || '',
+      entry.branch,
+      entry.vendor || '',
+      `$${entry.amount}`,
+      entry.comments || ''
+    ]);
+
+    const doc = new jsPDF();
+    doc.text('Petty Cash Report', 14, 15);
+    doc.autoTable({
+      head: [['Sr No', 'Month', 'Date', 'Description', 'Invoice No', 'Complaint No', 'Branch', 'Vendor', 'Amount', 'Comments']],
+      body: data,
+      startY: 25,
+      styles: { fontSize: 8 }
+    });
+    doc.save(`petty-cash-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const getFilteredPettyCash = () => {
+    return pettyCashEntries.filter(entry => {
+      const entryDate = new Date(entry.dated);
+      const startDate = new Date(pettyCashFilter.startDate);
+      const endDate = new Date(pettyCashFilter.endDate);
+      
+      const dateMatch = entryDate >= startDate && entryDate <= endDate;
+      const branchMatch = pettyCashFilter.branch === 'all' || entry.branch === pettyCashFilter.branch;
+      const vendorMatch = pettyCashFilter.vendor === 'all' || entry.vendor === pettyCashFilter.vendor;
+      
+      return dateMatch && branchMatch && vendorMatch;
+    });
+  };
+
   const searchByComplaintNumber = async () => {
     if (!searchComplaintNumber.trim()) {
       loadComplaints();
@@ -1710,6 +1865,13 @@ const JohnnyCMS = () => {
               )}
               {currentUser?.role === 'admin' && (
                 <>
+                  <button
+                    onClick={() => setCurrentView('petty-cash')}
+                    className={`px-4 py-2 rounded-lg transition ${currentView === 'petty-cash' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+                  >
+                    <DollarSign className="inline-block w-4 h-4 mr-2" />
+                    Petty Cash
+                  </button>
                   <button
                     onClick={() => setCurrentView('users')}
                     className={`px-4 py-2 rounded-lg transition ${currentView === 'users' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
@@ -2877,6 +3039,215 @@ const JohnnyCMS = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PETTY CASH MANAGEMENT */}
+        {currentView === 'petty-cash' && currentUser?.role === 'admin' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Petty Cash Management</h2>
+                <p className="text-sm text-gray-600 mt-1">Track expenses, equipment purchases, and maintenance costs</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowPettyCashModal(true);
+                    setEditingPettyCash(null);
+                    setNewPettyCash({
+                      month: new Date().toISOString().slice(0, 7),
+                      dated: new Date().toISOString().split('T')[0],
+                      description: '',
+                      invoice_no: '',
+                      complaint_no: '',
+                      branch: currentUser?.branch || '',
+                      vendor: '',
+                      amount: 0,
+                      comments: ''
+                    });
+                  }}
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition shadow-md flex items-center"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add Entry
+                </button>
+                <button
+                  onClick={exportPettyCashToExcel}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  Export PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={pettyCashFilter.startDate}
+                    onChange={(e) => setPettyCashFilter({...pettyCashFilter, startDate: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={pettyCashFilter.endDate}
+                    onChange={(e) => setPettyCashFilter({...pettyCashFilter, endDate: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
+                  <select
+                    value={pettyCashFilter.branch}
+                    onChange={(e) => setPettyCashFilter({...pettyCashFilter, branch: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  >
+                    <option value="all">All Branches</option>
+                    {warehouses.map(w => (
+                      <option key={w.id} value={w.branch}>{w.branch}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
+                  <select
+                    value={pettyCashFilter.vendor}
+                    onChange={(e) => setPettyCashFilter({...pettyCashFilter, vendor: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  >
+                    <option value="all">All Vendors</option>
+                    {pettyCashVendors.map(v => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm">Total Entries</p>
+                    <p className="text-3xl font-bold text-gray-800">{getFilteredPettyCash().length}</p>
+                  </div>
+                  <FileText className="w-10 h-10 text-green-500" />
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm">Total Amount</p>
+                    <p className="text-3xl font-bold text-gray-800">
+                      ${getFilteredPettyCash().reduce((sum, e) => sum + parseFloat(e.amount || 0), 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <DollarSign className="w-10 h-10 text-blue-500" />
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-purple-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm">This Month</p>
+                    <p className="text-3xl font-bold text-gray-800">
+                      ${getFilteredPettyCash()
+                        .filter(e => e.month === new Date().toISOString().slice(0, 7))
+                        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <Calendar className="w-10 h-10 text-purple-500" />
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm">Avg per Entry</p>
+                    <p className="text-3xl font-bold text-gray-800">
+                      ${getFilteredPettyCash().length > 0 
+                        ? (getFilteredPettyCash().reduce((sum, e) => sum + parseFloat(e.amount || 0), 0) / getFilteredPettyCash().length).toFixed(2)
+                        : '0.00'}
+                    </p>
+                  </div>
+                  <TrendingUp className="w-10 h-10 text-orange-500" />
+                </div>
+              </div>
+            </div>
+
+            {/* Petty Cash Table */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Sr No</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Month</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Invoice No</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Complaint No</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vendor</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Comments</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getFilteredPettyCash().map((entry, index) => (
+                      <tr key={entry.id} className="border-b hover:bg-gray-50 transition">
+                        <td className="px-4 py-3 text-sm text-gray-700">{index + 1}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{entry.month}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {new Date(entry.dated).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{entry.description}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{entry.invoice_no || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{entry.complaint_no || '-'}</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                            {entry.branch}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{entry.vendor || '-'}</td>
+                        <td className="px-4 py-3 text-sm font-bold text-green-600">
+                          ${parseFloat(entry.amount || 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{entry.comments || '-'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingPettyCash(entry);
+                                setNewPettyCash(entry);
+                                setShowPettyCashModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePettyCash(entry.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -4287,6 +4658,171 @@ const JohnnyCMS = () => {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PETTY CASH MODAL */}
+      {showPettyCashModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                {editingPettyCash ? 'Edit Petty Cash Entry' : 'Add New Petty Cash Entry'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowPettyCashModal(false);
+                  setEditingPettyCash(null);
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Month *</label>
+                <input
+                  type="month"
+                  value={newPettyCash.month}
+                  onChange={(e) => setNewPettyCash({...newPettyCash, month: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
+                <input
+                  type="date"
+                  value={newPettyCash.dated}
+                  onChange={(e) => setNewPettyCash({...newPettyCash, dated: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                <textarea
+                  value={newPettyCash.description}
+                  onChange={(e) => setNewPettyCash({...newPettyCash, description: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none h-24 resize-none"
+                  placeholder="e.g., Camera sent for repairing for CK, Sunder warehouse, Emporium"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice No</label>
+                <input
+                  type="text"
+                  value={newPettyCash.invoice_no}
+                  onChange={(e) => setNewPettyCash({...newPettyCash, invoice_no: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  placeholder="e.g., JJ-IT-8011"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Complaint No</label>
+                <input
+                  type="text"
+                  value={newPettyCash.complaint_no}
+                  onChange={(e) => setNewPettyCash({...newPettyCash, complaint_no: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  placeholder="Link to complaint if applicable"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Branch *</label>
+                <select
+                  value={newPettyCash.branch}
+                  onChange={(e) => setNewPettyCash({...newPettyCash, branch: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  disabled={loading}
+                >
+                  <option value="">Select Branch</option>
+                  {warehouses.map(w => (
+                    <option key={w.id} value={w.branch}>{w.branch}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
+                <select
+                  value={newPettyCash.vendor}
+                  onChange={(e) => setNewPettyCash({...newPettyCash, vendor: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  disabled={loading}
+                >
+                  <option value="">Select Vendor</option>
+                  {pettyCashVendors.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newPettyCash.amount}
+                  onChange={(e) => setNewPettyCash({...newPettyCash, amount: parseFloat(e.target.value) || 0})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  placeholder="0.00"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Comments</label>
+                <select
+                  value={newPettyCash.comments}
+                  onChange={(e) => setNewPettyCash({...newPettyCash, comments: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  disabled={loading}
+                >
+                  <option value="">Select Comment Type</option>
+                  {pettyCashComments.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowPettyCashModal(false);
+                  setEditingPettyCash(null);
+                  setError('');
+                }}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddPettyCash}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition disabled:opacity-50 flex items-center justify-center"
+              >
+                {loading ? (
+                  <Loader className="animate-spin w-5 h-5" />
+                ) : (
+                  editingPettyCash ? 'Update Entry' : 'Save Entry'
+                )}
+              </button>
             </div>
           </div>
         </div>
