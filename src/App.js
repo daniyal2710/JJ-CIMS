@@ -1301,29 +1301,43 @@ const JohnnyCMS = () => {
   };
 
   const exportPettyCashToExcel = () => {
-    const filteredEntries = getFilteredPettyCash();
-    const data = filteredEntries.map((entry, index) => [
-      index + 1,
-      entry.month,
-      entry.dated,
-      entry.description,
-      entry.invoice_no || '',
-      entry.complaint_no || '',
-      entry.branch,
-      entry.vendor || '',
-      `$${entry.amount}`,
-      entry.comments || ''
-    ]);
+    try {
+      console.log('Exporting petty cash to PDF...');
+      const filteredEntries = getFilteredPettyCash();
+      console.log('Filtered entries:', filteredEntries.length);
+      
+      if (filteredEntries.length === 0) {
+        alert('No entries to export. Please add some petty cash entries first.');
+        return;
+      }
+      
+      const data = filteredEntries.map((entry, index) => [
+        index + 1,
+        entry.month,
+        entry.dated,
+        entry.description,
+        entry.invoice_no || '',
+        entry.complaint_no || '',
+        entry.branch,
+        entry.vendor || '',
+        `$${entry.amount}`,
+        entry.comments || ''
+      ]);
 
-    const doc = new jsPDF();
-    doc.text('Petty Cash Report', 14, 15);
-    doc.autoTable({
-      head: [['Sr No', 'Month', 'Date', 'Description', 'Invoice No', 'Complaint No', 'Branch', 'Vendor', 'Amount', 'Comments']],
-      body: data,
-      startY: 25,
-      styles: { fontSize: 8 }
-    });
-    doc.save(`petty-cash-${new Date().toISOString().split('T')[0]}.pdf`);
+      const doc = new jsPDF();
+      doc.text('Petty Cash Report', 14, 15);
+      doc.autoTable({
+        head: [['Sr No', 'Month', 'Date', 'Description', 'Invoice No', 'Complaint No', 'Branch', 'Vendor', 'Amount', 'Comments']],
+        body: data,
+        startY: 25,
+        styles: { fontSize: 8 }
+      });
+      doc.save(`petty-cash-${new Date().toISOString().split('T')[0]}.pdf`);
+      console.log('Petty cash PDF export completed');
+    } catch (err) {
+      console.error('Petty cash export error:', err);
+      alert('Failed to export petty cash: ' + err.message);
+    }
   };
 
   const getFilteredPettyCash = () => {
@@ -1521,21 +1535,28 @@ const JohnnyCMS = () => {
   };
 
   const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(complaints.map(c => ({
-      'Complaint Number': c.complaint_number,
-      Date: c.date,
-      Department: c.department,
-      Category: c.category,
-      Priority: c.priority,
-      Comments: c.comments,
-      Status: c.status,
-      Branch: c.branch,
-      'Created By': c.created_by
-    })));
-    
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Complaints');
-    XLSX.writeFile(wb, `JJ_Complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
+    try {
+      console.log('Exporting to Excel...', complaints.length, 'complaints');
+      const ws = XLSX.utils.json_to_sheet(complaints.map(c => ({
+        'Complaint Number': c.complaint_number,
+        Date: c.date,
+        Department: c.department,
+        Category: c.category,
+        Priority: c.priority,
+        Comments: c.comments,
+        Status: c.status,
+        Branch: c.branch,
+        'Created By': c.created_by
+      })));
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Complaints');
+      XLSX.writeFile(wb, `JJ_Complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
+      console.log('Export completed successfully');
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Failed to export: ' + err.message);
+    }
   };
 
   const exportInventoryToExcel = () => {
@@ -1559,33 +1580,40 @@ const JohnnyCMS = () => {
   };
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    
-    doc.setFontSize(18);
-    doc.text('Johnny & Jugnu - Complaints Report', 14, 20);
-    
-    doc.setFontSize(11);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
-    
-    const tableData = complaints.map(c => [
-      c.complaint_number,
-      c.date,
-      c.department,
-      c.category,
-      c.priority,
-      c.status,
-      c.branch
-    ]);
-    
-    doc.autoTable({
-      startY: 40,
-      head: [['Complaint #', 'Date', 'Department', 'Category', 'Priority', 'Status', 'Branch']],
-      body: tableData,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [234, 88, 12] }
-    });
-    
-    doc.save(`JJ_Complaints_${new Date().toISOString().split('T')[0]}.pdf`);
+    try {
+      console.log('Exporting to PDF...', complaints.length, 'complaints');
+      const doc = new jsPDF();
+      
+      doc.setFontSize(18);
+      doc.text('Johnny & Jugnu - Complaints Report', 14, 20);
+      
+      doc.setFontSize(11);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+      
+      const tableData = complaints.map(c => [
+        c.complaint_number,
+        c.date,
+        c.department,
+        c.category,
+        c.priority,
+        c.status,
+        c.branch
+      ]);
+      
+      doc.autoTable({
+        startY: 40,
+        head: [['Complaint #', 'Date', 'Department', 'Category', 'Priority', 'Status', 'Branch']],
+        body: tableData,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [234, 88, 12] }
+      });
+      
+      doc.save(`JJ_Complaints_${new Date().toISOString().split('T')[0]}.pdf`);
+      console.log('PDF export completed successfully');
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('Failed to export PDF: ' + err.message);
+    }
   };
 
   const exportTransfersToPDF = () => {
