@@ -160,6 +160,8 @@ const JohnnyCMS = () => {
     branch: '',
     vendor: '',
     amount: 0,
+    payment_status: 'Pending',
+    paid_amount: 0,
     comments: ''
   });
   const [pettyCashFilter, setPettyCashFilter] = useState({
@@ -171,6 +173,7 @@ const JohnnyCMS = () => {
 
   const pettyCashVendors = ['local market', 'DAHUA', 'indriver', 'HAQ enterprise', 'BRAIN TECH', 'NKS', 'Other'];
   const pettyCashComments = ['New Installation', 'Repairing', 'transportation', 'Maintenance', 'Purchase', 'Other'];
+  const paymentStatuses = ['Pending', 'Partially Paid', 'Paid'];
 
   const inventoryCategories = ['Raw Materials', 'Ingredients', 'Packaging', 'Beverages', 'Sauces', 'Supplies', 'Equipment', ...customInventoryCategories];
   const units = ['kg', 'lbs', 'liters', 'pieces', 'boxes', 'bags', 'bottles'];
@@ -1268,6 +1271,8 @@ const JohnnyCMS = () => {
         branch: '',
         vendor: '',
         amount: 0,
+        payment_status: 'Pending',
+        paid_amount: 0,
         comments: ''
       });
       setEditingPettyCash(null);
@@ -1300,6 +1305,46 @@ const JohnnyCMS = () => {
     }
   };
 
+  const handlePaymentStatusChange = async (entryId, newStatus, currentAmount) => {
+    let paidAmount = 0;
+    
+    if (newStatus === 'Partially Paid') {
+      const input = window.prompt(`Enter the amount paid (Total: Rs ${currentAmount}):`);
+      if (input === null) return; // User cancelled
+      
+      paidAmount = parseFloat(input);
+      if (isNaN(paidAmount) || paidAmount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+      }
+      if (paidAmount >= currentAmount) {
+        alert('Paid amount should be less than total amount for partial payment. Use "Paid" status instead.');
+        return;
+      }
+    } else if (newStatus === 'Paid') {
+      paidAmount = currentAmount;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('petty_cash')
+        .update({ 
+          payment_status: newStatus,
+          paid_amount: paidAmount
+        })
+        .eq('id', entryId);
+      
+      if (error) throw error;
+      await loadPettyCash();
+    } catch (err) {
+      console.error('Error updating payment status:', err);
+      setError('Failed to update payment status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const exportPettyCashToExcel = () => {
     try {
       console.log('Exporting petty cash to PDF...');
@@ -1320,17 +1365,18 @@ const JohnnyCMS = () => {
         entry.complaint_no || '',
         entry.branch,
         entry.vendor || '',
-        `$${entry.amount}`,
+        `Rs ${entry.amount}`,
+        entry.payment_status || 'Pending',
         entry.comments || ''
       ]);
 
       const doc = new jsPDF();
       doc.text('Petty Cash Report', 14, 15);
       autoTable(doc, {
-        head: [['Sr No', 'Month', 'Date', 'Description', 'Invoice No', 'Complaint No', 'Branch', 'Vendor', 'Amount', 'Comments']],
+        head: [['Sr No', 'Month', 'Date', 'Description', 'Invoice No', 'Complaint No', 'Branch', 'Vendor', 'Amount', 'Status', 'Comments']],
         body: data,
         startY: 25,
-        styles: { fontSize: 8 }
+        styles: { fontSize: 7 }
       });
       doc.save(`petty-cash-${new Date().toISOString().split('T')[0]}.pdf`);
       console.log('Petty cash PDF export completed');
@@ -2095,7 +2141,7 @@ const JohnnyCMS = () => {
                   <DollarSign className="w-8 h-8 text-green-500" />
                 </div>
                 <p className="text-2xl font-bold text-gray-800">
-                  ${inventoryAnalytics.totalValue.toLocaleString()}
+                  Rs {inventoryAnalytics.totalValue.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -2233,9 +2279,9 @@ const JohnnyCMS = () => {
                                 </div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">${item.unit_price}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">Rs {item.unit_price}</td>
                             <td className="px-4 py-3 text-sm font-semibold text-gray-800">
-                              ${(item.quantity * item.unit_price).toFixed(2)}
+                              Rs {(item.quantity * item.unit_price).toFixed(2)}
                             </td>
                             <td className="px-4 py-3">
                               <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -2566,31 +2612,53 @@ const JohnnyCMS = () => {
 
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  {(currentUser?.role === 'admin' || currentUser?.role === 'support') 
-                    ? 'Branch Performance' 
-                    : 'My Branch Performance'
-                  }
+                  Petty Cash by Branch
                 </h3>
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {getBranchPerformance().map((branch, idx) => (
-                    <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium text-gray-800">{branch.branch}</span>
-                        <span className="text-sm font-semibold text-orange-600">{branch.rate}%</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-gray-600 mb-2">
-                        <span>Total: {branch.total}</span>
-                        <span>Resolved: {branch.resolved}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full transition-all" 
-                          style={{width: `${branch.rate}%`}}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={(() => {
+                        // Group petty cash by branch
+                        const branchTotals = {};
+                        pettyCashEntries.forEach(entry => {
+                          if (!branchTotals[entry.branch]) {
+                            branchTotals[entry.branch] = 0;
+                          }
+                          branchTotals[entry.branch] += parseFloat(entry.amount || 0);
+                        });
+                        
+                        // Convert to array for pie chart
+                        return Object.entries(branchTotals).map(([branch, amount]) => ({
+                          name: branch,
+                          value: amount
+                        }));
+                      })()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => `${name}: Rs ${value.toFixed(0)}`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {(() => {
+                        const COLORS = ['#EA580C', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+                        const branchTotals = {};
+                        pettyCashEntries.forEach(entry => {
+                          if (!branchTotals[entry.branch]) {
+                            branchTotals[entry.branch] = 0;
+                          }
+                          branchTotals[entry.branch] += parseFloat(entry.amount || 0);
+                        });
+                        return Object.keys(branchTotals).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ));
+                      })()}
+                    </Pie>
+                    <Tooltip formatter={(value) => `Rs ${value.toFixed(2)}`} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>
@@ -3094,6 +3162,8 @@ const JohnnyCMS = () => {
                       branch: currentUser?.branch || '',
                       vendor: '',
                       amount: 0,
+                      payment_status: 'Pending',
+                      paid_amount: 0,
                       comments: ''
                     });
                   }}
@@ -3178,7 +3248,7 @@ const JohnnyCMS = () => {
                   <div>
                     <p className="text-gray-600 text-sm">Total Amount</p>
                     <p className="text-3xl font-bold text-gray-800">
-                      ${getFilteredPettyCash().reduce((sum, e) => sum + parseFloat(e.amount || 0), 0).toFixed(2)}
+                      Rs {getFilteredPettyCash().reduce((sum, e) => sum + parseFloat(e.amount || 0), 0).toFixed(2)}
                     </p>
                   </div>
                   <DollarSign className="w-10 h-10 text-blue-500" />
@@ -3189,7 +3259,7 @@ const JohnnyCMS = () => {
                   <div>
                     <p className="text-gray-600 text-sm">This Month</p>
                     <p className="text-3xl font-bold text-gray-800">
-                      ${getFilteredPettyCash()
+                      Rs {getFilteredPettyCash()
                         .filter(e => e.month === new Date().toISOString().slice(0, 7))
                         .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0).toFixed(2)}
                     </p>
@@ -3202,7 +3272,7 @@ const JohnnyCMS = () => {
                   <div>
                     <p className="text-gray-600 text-sm">Avg per Entry</p>
                     <p className="text-3xl font-bold text-gray-800">
-                      ${getFilteredPettyCash().length > 0 
+                      Rs {getFilteredPettyCash().length > 0 
                         ? (getFilteredPettyCash().reduce((sum, e) => sum + parseFloat(e.amount || 0), 0) / getFilteredPettyCash().length).toFixed(2)
                         : '0.00'}
                     </p>
@@ -3227,6 +3297,7 @@ const JohnnyCMS = () => {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vendor</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Comments</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
@@ -3249,7 +3320,29 @@ const JohnnyCMS = () => {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">{entry.vendor || '-'}</td>
                         <td className="px-4 py-3 text-sm font-bold text-green-600">
-                          ${parseFloat(entry.amount || 0).toFixed(2)}
+                          Rs {parseFloat(entry.amount || 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <select
+                              value={entry.payment_status || 'Pending'}
+                              onChange={(e) => handlePaymentStatusChange(entry.id, e.target.value, entry.amount)}
+                              className={`px-2 py-1 rounded-full text-xs font-semibold outline-none cursor-pointer border ${
+                                entry.payment_status === 'Paid' ? 'bg-green-100 text-green-700 border-green-300' :
+                                entry.payment_status === 'Partially Paid' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
+                                'bg-red-100 text-red-700 border-red-300'
+                              }`}
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="Partially Paid">Partially Paid</option>
+                              <option value="Paid">Paid</option>
+                            </select>
+                            {entry.payment_status === 'Partially Paid' && entry.paid_amount > 0 && (
+                              <span className="text-xs text-gray-500">
+                                Paid: Rs {parseFloat(entry.paid_amount).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">{entry.comments || '-'}</td>
                         <td className="px-4 py-3">
