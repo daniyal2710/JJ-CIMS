@@ -2612,13 +2612,74 @@ const JohnnyCMS = () => {
 
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  Petty Cash by Branch
+                  Petty Cash - Current Month ({new Date().toLocaleString('default', { month: 'long', year: 'numeric' })})
                 </h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
                       data={(() => {
-                        // Group petty cash by branch
+                        // Get current month in YYYY-MM format
+                        const currentMonth = new Date().toISOString().slice(0, 7);
+                        // Group petty cash by branch for current month only
+                        const branchTotals = {};
+                        pettyCashEntries
+                          .filter(entry => entry.month === currentMonth)
+                          .forEach(entry => {
+                            if (!branchTotals[entry.branch]) {
+                              branchTotals[entry.branch] = 0;
+                            }
+                            branchTotals[entry.branch] += parseFloat(entry.amount || 0);
+                          });
+                        
+                        // Convert to array for pie chart
+                        return Object.entries(branchTotals).map(([branch, amount]) => ({
+                          name: branch,
+                          value: amount
+                        }));
+                      })()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => value > 0 ? `${name}: Rs ${value.toFixed(0)}` : ''}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {(() => {
+                        const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EA580C', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+                        const currentMonth = new Date().toISOString().slice(0, 7);
+                        const branchTotals = {};
+                        pettyCashEntries
+                          .filter(entry => entry.month === currentMonth)
+                          .forEach(entry => {
+                            if (!branchTotals[entry.branch]) {
+                              branchTotals[entry.branch] = 0;
+                            }
+                            branchTotals[entry.branch] += parseFloat(entry.amount || 0);
+                          });
+                        return Object.keys(branchTotals).map((entry, index) => (
+                          <Cell key={`cell-month-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ));
+                      })()}
+                    </Pie>
+                    <Tooltip formatter={(value) => `Rs ${value.toFixed(2)}`} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* All-Time Petty Cash Chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  Petty Cash - All Time (Till Date)
+                </h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={(() => {
+                        // Group all petty cash by branch
                         const branchTotals = {};
                         pettyCashEntries.forEach(entry => {
                           if (!branchTotals[entry.branch]) {
@@ -2636,7 +2697,7 @@ const JohnnyCMS = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, value }) => `${name}: Rs ${value.toFixed(0)}`}
+                      label={({ name, value }) => value > 0 ? `${name}: Rs ${value.toFixed(0)}` : ''}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
@@ -2651,7 +2712,7 @@ const JohnnyCMS = () => {
                           branchTotals[entry.branch] += parseFloat(entry.amount || 0);
                         });
                         return Object.keys(branchTotals).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-all-${index}`} fill={COLORS[index % COLORS.length]} />
                         ));
                       })()}
                     </Pie>
@@ -2659,6 +2720,41 @@ const JohnnyCMS = () => {
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  Petty Cash Summary
+                </h3>
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-sm text-green-600 font-medium">Current Month Total</p>
+                    <p className="text-2xl font-bold text-green-700">
+                      Rs {pettyCashEntries
+                        .filter(e => e.month === new Date().toISOString().slice(0, 7))
+                        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+                        .toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-600 font-medium">All Time Total</p>
+                    <p className="text-2xl font-bold text-blue-700">
+                      Rs {pettyCashEntries
+                        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+                        .toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <p className="text-sm text-purple-600 font-medium">Total Entries</p>
+                    <p className="text-2xl font-bold text-purple-700">{pettyCashEntries.length}</p>
+                  </div>
+                  <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                    <p className="text-sm text-orange-600 font-medium">Pending Payments</p>
+                    <p className="text-2xl font-bold text-orange-700">
+                      {pettyCashEntries.filter(e => e.payment_status === 'Pending' || !e.payment_status).length}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
