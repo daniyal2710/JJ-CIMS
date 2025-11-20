@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2, X, Loader, Download, TrendingUp, TrendingDown, AlertTriangle, Hash, Package, ShoppingCart, TrendingDown as StockDown, Archive, RefreshCw, Calendar, DollarSign, Layers, ArrowLeft } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Search, Plus, Bell, FileText, BarChart3, Users, Tag, Edit, Trash2, X, Loader, Download, TrendingUp, TrendingDown, AlertTriangle, Hash, Package, ShoppingCart, TrendingDown as StockDown, Archive, RefreshCw, Calendar, DollarSign, Layers, ArrowLeft, Mail } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { jsPDF } from 'jspdf';
@@ -170,6 +170,12 @@ const JohnnyCMS = () => {
     branch: 'all',
     vendor: 'all'
   });
+
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailRecipients, setEmailRecipients] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailReportType, setEmailReportType] = useState('petty-cash');
 
   const pettyCashVendors = ['local market', 'DAHUA', 'indriver', 'HAQ enterprise', 'BRAIN TECH', 'NKS', 'Other'];
   const pettyCashComments = ['New Installation', 'Repairing', 'transportation', 'Maintenance', 'Purchase', 'Other'];
@@ -1701,6 +1707,185 @@ const JohnnyCMS = () => {
     return true;
   });
 
+  // Email Report Functions
+  const generatePettyCashReportHTML = () => {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const currentMonthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+    
+    // Current month totals by branch
+    const currentMonthByBranch = {};
+    pettyCashEntries
+      .filter(e => e.month === currentMonth)
+      .forEach(e => {
+        if (!currentMonthByBranch[e.branch]) currentMonthByBranch[e.branch] = 0;
+        currentMonthByBranch[e.branch] += parseFloat(e.amount || 0);
+      });
+    
+    // All time totals by branch
+    const allTimeByBranch = {};
+    pettyCashEntries.forEach(e => {
+      if (!allTimeByBranch[e.branch]) allTimeByBranch[e.branch] = 0;
+      allTimeByBranch[e.branch] += parseFloat(e.amount || 0);
+    });
+    
+    const currentMonthTotal = pettyCashEntries
+      .filter(e => e.month === currentMonth)
+      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    
+    const allTimeTotal = pettyCashEntries
+      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    
+    const pendingCount = pettyCashEntries
+      .filter(e => e.payment_status === 'Pending' || !e.payment_status).length;
+    
+    let html = `
+      <h2>Petty Cash Report - ${currentMonthName}</h2>
+      <p>Generated on: ${new Date().toLocaleString()}</p>
+      
+      <h3>Summary</h3>
+      <ul>
+        <li><strong>Current Month Total:</strong> Rs ${currentMonthTotal.toLocaleString()}</li>
+        <li><strong>All Time Total:</strong> Rs ${allTimeTotal.toLocaleString()}</li>
+        <li><strong>Total Entries:</strong> ${pettyCashEntries.length}</li>
+        <li><strong>Pending Payments:</strong> ${pendingCount}</li>
+      </ul>
+      
+      <h3>Current Month (${currentMonthName}) - By Branch</h3>
+      <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+        <tr style="background-color: #f3f4f6;">
+          <th>Branch</th>
+          <th>Amount</th>
+        </tr>
+    `;
+    
+    Object.entries(currentMonthByBranch).forEach(([branch, amount]) => {
+      html += `
+        <tr>
+          <td>${branch}</td>
+          <td>Rs ${amount.toLocaleString()}</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+      </table>
+      
+      <h3>All Time (Till Date) - By Branch</h3>
+      <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+        <tr style="background-color: #f3f4f6;">
+          <th>Branch</th>
+          <th>Amount</th>
+        </tr>
+    `;
+    
+    Object.entries(allTimeByBranch).forEach(([branch, amount]) => {
+      html += `
+        <tr>
+          <td>${branch}</td>
+          <td>Rs ${amount.toLocaleString()}</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+      </table>
+      
+      <h3>Recent Entries (Last 10)</h3>
+      <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+        <tr style="background-color: #f3f4f6;">
+          <th>Date</th>
+          <th>Description</th>
+          <th>Branch</th>
+          <th>Amount</th>
+          <th>Status</th>
+        </tr>
+    `;
+    
+    pettyCashEntries.slice(0, 10).forEach(entry => {
+      html += `
+        <tr>
+          <td>${entry.dated}</td>
+          <td>${entry.description}</td>
+          <td>${entry.branch}</td>
+          <td>Rs ${parseFloat(entry.amount).toLocaleString()}</td>
+          <td>${entry.payment_status || 'Pending'}</td>
+        </tr>
+      `;
+    });
+    
+    html += `</table>`;
+    
+    return html;
+  };
+
+  const sendEmailReport = async () => {
+    if (!emailRecipients.trim()) {
+      setError('Please enter at least one email recipient');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const reportHTML = generatePettyCashReportHTML();
+      
+      // Store email in database for sending via backend/edge function
+      const { error } = await supabase
+        .from('email_reports')
+        .insert([{
+          recipients: emailRecipients,
+          subject: emailSubject || 'Petty Cash Report - Johnny & Jugnu',
+          message: emailMessage,
+          report_html: reportHTML,
+          report_type: emailReportType,
+          sent_by: currentUser?.username,
+          status: 'pending'
+        }]);
+      
+      if (error) throw error;
+      
+      alert('Report queued for sending! The email will be sent shortly.');
+      setShowEmailModal(false);
+      setEmailRecipients('');
+      setEmailSubject('');
+      setEmailMessage('');
+    } catch (err) {
+      console.error('Error sending email report:', err);
+      // Fallback: Open mailto link
+      const reportText = `
+Petty Cash Report - Johnny & Jugnu
+Generated: ${new Date().toLocaleString()}
+
+Current Month Total: Rs ${pettyCashEntries
+        .filter(e => e.month === new Date().toISOString().slice(0, 7))
+        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+        .toLocaleString()}
+
+All Time Total: Rs ${pettyCashEntries
+        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+        .toLocaleString()}
+
+Total Entries: ${pettyCashEntries.length}
+
+${emailMessage ? `\nMessage: ${emailMessage}` : ''}
+
+---
+This report was generated from Johnny & Jugnu CMS.
+      `.trim();
+      
+      const mailtoLink = `mailto:${emailRecipients}?subject=${encodeURIComponent(emailSubject || 'Petty Cash Report - Johnny & Jugnu')}&body=${encodeURIComponent(reportText)}`;
+      window.open(mailtoLink, '_blank');
+      
+      setShowEmailModal(false);
+      setEmailRecipients('');
+      setEmailSubject('');
+      setEmailMessage('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredInventory = inventoryItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchInventory.toLowerCase()) ||
                          item.sku.toLowerCase().includes(searchInventory.toLowerCase());
@@ -2035,6 +2220,23 @@ const JohnnyCMS = () => {
                     </button>
                   </>
                 )}
+                {/* Stock Movement - Available to all users */}
+                <button
+                  onClick={() => {
+                    setShowStockMovementModal(true);
+                    setNewStockMovement({
+                      item_id: '',
+                      movement_type: 'new',
+                      quantity: 0,
+                      reference_number: '',
+                      notes: ''
+                    });
+                  }}
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition flex items-center"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Stock Movement
+                </button>
                 {currentUser?.role === 'admin' && (
                   <>
                     <button
@@ -2050,22 +2252,6 @@ const JohnnyCMS = () => {
                     >
                       <Users className="w-4 h-4 mr-2" />
                       Suppliers
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowStockMovementModal(true);
-                        setNewStockMovement({
-                          item_id: '',
-                          movement_type: 'new',
-                          quantity: 0,
-                          reference_number: '',
-                          notes: ''
-                        });
-                      }}
-                      className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition flex items-center"
-                    >
-                      <ShoppingCart className="w-4 h-4 mr-2" />
-                      Stock Movement
                     </button>
                     <button
                       onClick={() => {
@@ -2471,6 +2657,17 @@ const JohnnyCMS = () => {
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Export PDF
+                </button>
+                <button
+                  onClick={() => {
+                    setShowEmailModal(true);
+                    setEmailReportType('petty-cash');
+                    setEmailSubject(`Petty Cash Report - ${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}`);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email Report
                 </button>
               </div>
             </div>
@@ -5038,6 +5235,141 @@ const JohnnyCMS = () => {
                   <Loader className="animate-spin w-5 h-5" />
                 ) : (
                   editingPettyCash ? 'Update Entry' : 'Save Entry'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EMAIL REPORT MODAL */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                <Mail className="inline-block w-6 h-6 mr-2 text-blue-600" />
+                Email Petty Cash Report
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEmailModal(false);
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Recipients (comma separated) *
+                </label>
+                <input
+                  type="text"
+                  value={emailRecipients}
+                  onChange={(e) => setEmailRecipients(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="manager@company.com, director@company.com"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Petty Cash Report - November 2025"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Additional Message</label>
+                <textarea
+                  value={emailMessage}
+                  onChange={(e) => setEmailMessage(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
+                  placeholder="Please find the attached petty cash report for your review..."
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Report Preview */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Report Preview</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-gray-500">Current Month</p>
+                    <p className="text-lg font-bold text-green-600">
+                      Rs {pettyCashEntries
+                        .filter(e => e.month === new Date().toISOString().slice(0, 7))
+                        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+                        .toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-gray-500">All Time Total</p>
+                    <p className="text-lg font-bold text-blue-600">
+                      Rs {pettyCashEntries
+                        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+                        .toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-gray-500">Total Entries</p>
+                    <p className="text-lg font-bold text-purple-600">{pettyCashEntries.length}</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-gray-500">Pending Payments</p>
+                    <p className="text-lg font-bold text-orange-600">
+                      {pettyCashEntries.filter(e => e.payment_status === 'Pending' || !e.payment_status).length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-700">
+                  <strong>Note:</strong> The email will include:
+                  <ul className="list-disc list-inside mt-1 ml-2">
+                    <li>Current month petty cash by branch</li>
+                    <li>All-time petty cash by branch</li>
+                    <li>Recent 10 entries with details</li>
+                    <li>Payment status summary</li>
+                  </ul>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowEmailModal(false);
+                  setError('');
+                }}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendEmailReport}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition disabled:opacity-50 flex items-center justify-center"
+              >
+                {loading ? (
+                  <Loader className="animate-spin w-5 h-5" />
+                ) : (
+                  <>
+                    <Mail className="w-5 h-5 mr-2" />
+                    Send Report
+                  </>
                 )}
               </button>
             </div>
