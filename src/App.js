@@ -34,6 +34,7 @@ const JohnnyCMS = () => {
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [showComplaintRemarkModal, setShowComplaintRemarkModal] = useState(false);
   const [showComplaintRCAModal, setShowComplaintRCAModal] = useState(false);
+  const [expandedComplaint, setExpandedComplaint] = useState(null);
   const [complaintRemarkData, setComplaintRemarkData] = useState({
     complaintId: null,
     newStatus: '',
@@ -3214,11 +3215,13 @@ This report was generated from Johnny & Jugnu CMS.
                         {currentUser?.role === 'admin' && (
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created By</th>
                         )}
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Details</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredComplaints.map((complaint) => (
-                        <tr key={complaint.id} className="border-b hover:bg-gray-50 transition">
+                        <React.Fragment key={complaint.id}>
+                          <tr className="border-b hover:bg-gray-50 transition">
                           <td className="px-4 py-3">
                             <span className="text-sm font-mono font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded">
                               {complaint.complaint_number}
@@ -3303,7 +3306,96 @@ This report was generated from Johnny & Jugnu CMS.
                           {currentUser?.role === 'admin' && (
                             <td className="px-4 py-3 text-sm text-gray-700">{complaint.created_by}</td>
                           )}
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => setExpandedComplaint(expandedComplaint === complaint.id ? null : complaint.id)}
+                              className="text-blue-600 hover:text-blue-800 font-semibold text-sm flex items-center gap-1"
+                            >
+                              {expandedComplaint === complaint.id ? '▼ Hide' : '▶ View'}
+                            </button>
+                          </td>
                         </tr>
+                        
+                        {/* Expandable Details Row */}
+                        {expandedComplaint === complaint.id && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={currentUser?.role === 'admin' ? 11 : 10} className="px-4 py-4">
+                              <div className="bg-white rounded-lg p-4 shadow-inner">
+                                <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Additional Details
+                                </h4>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Status Remarks (for Pending/Parking) */}
+                                  {complaint.status_remarks && (complaint.status === 'Pending' || complaint.status === 'Parking') && (
+                                    <div className="col-span-2">
+                                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                        <p className="text-xs font-semibold text-blue-700 mb-1">Status Remarks ({complaint.status})</p>
+                                        <p className="text-sm text-gray-700">{complaint.status_remarks}</p>
+                                        {complaint.updated_by && (
+                                          <p className="text-xs text-gray-500 mt-2">
+                                            Updated by: {complaint.updated_by} 
+                                            {complaint.updated_at && ` on ${new Date(complaint.updated_at).toLocaleString()}`}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* RCA Details (for Resolved) */}
+                                  {complaint.status === 'Resolved' && (
+                                    <>
+                                      {complaint.rca && (
+                                        <div>
+                                          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                            <p className="text-xs font-semibold text-green-700 mb-1">Root Cause Analysis</p>
+                                            <p className="text-sm font-semibold text-gray-800">{complaint.rca}</p>
+                                          </div>
+                                        </div>
+                                      )}
+                                      
+                                      {complaint.resolution_remarks && (
+                                        <div>
+                                          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                            <p className="text-xs font-semibold text-green-700 mb-1">Resolution Remarks</p>
+                                            <p className="text-sm text-gray-700">{complaint.resolution_remarks}</p>
+                                          </div>
+                                        </div>
+                                      )}
+                                      
+                                      <div>
+                                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                          <p className="text-xs font-semibold text-gray-600 mb-1">Resolved By</p>
+                                          <p className="text-sm text-gray-800">
+                                            {complaint.resolved_by || 'N/A'}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      
+                                      <div>
+                                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                          <p className="text-xs font-semibold text-gray-600 mb-1">Resolved At</p>
+                                          <p className="text-sm text-gray-800">
+                                            {complaint.resolved_at ? new Date(complaint.resolved_at).toLocaleString() : 'N/A'}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                  
+                                  {/* Show message if no additional details */}
+                                  {!complaint.status_remarks && complaint.status !== 'Resolved' && (
+                                    <div className="col-span-2">
+                                      <p className="text-sm text-gray-500 italic">No additional details available for this complaint.</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                       ))}
                     </tbody>
                   </table>
