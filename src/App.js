@@ -562,6 +562,12 @@ const JohnnyCMS = () => {
         .select('*, inventory_items(name, sku)')
         .order('created_at', { ascending: false });
       
+      // Filter by warehouse for non-admin/support users
+      // Show movements where user's warehouse is EITHER source OR destination
+      if (currentUser?.role !== 'admin' && currentUser?.role !== 'support' && currentUser?.warehouse_id) {
+        query = query.or(`from_warehouse_id.eq.${currentUser.warehouse_id},to_warehouse_id.eq.${currentUser.warehouse_id}`);
+      }
+      
       // Apply date filter if set
       if (transferDateFilter.startDate) {
         query = query.gte('created_at', transferDateFilter.startDate + 'T00:00:00');
