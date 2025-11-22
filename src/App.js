@@ -909,7 +909,7 @@ const JohnnyCMS = () => {
       
       setCurrentUser(data);
       setIsLoggedIn(true);
-      setCurrentView('analytics');
+      setCurrentView('dashboard');
     } catch (err) {
       console.error('Login error:', err);
       setError('Login failed. Please try again.');
@@ -949,7 +949,7 @@ const JohnnyCMS = () => {
       
       await loadComplaints();
       setNewComplaint({ department: 'IT', category: '', comments: '', priority: 'Medium', assigned_to: '' });
-      setCurrentView('dashboard');
+      setCurrentView('complaints');
       
       alert(`Complaint created successfully!\nComplaint Number: ${complaintNumber}`);
     } catch (err) {
@@ -1986,7 +1986,7 @@ This report was generated from Johnny & Jugnu CMS.
               ⚡ Real-time Tracking
             </div>
             <div className="px-6 py-3 bg-white bg-opacity-20 backdrop-blur-md rounded-full text-white font-semibold">
-              📊 Advanced Analytics
+              📊 Dashboard & Reports
             </div>
             <div className="px-6 py-3 bg-white bg-opacity-20 backdrop-blur-md rounded-full text-white font-semibold">
               📦 Inventory Control
@@ -2100,28 +2100,26 @@ This report was generated from Johnny & Jugnu CMS.
             
             <nav className="hidden md:flex items-center space-x-2">
               <button
-                onClick={() => setCurrentView('analytics')}
-                className={`px-4 py-2 rounded-lg transition ${currentView === 'analytics' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-              >
-                <BarChart3 className="inline-block w-4 h-4 mr-2" />
-                Analytics
-              </button>
-              <button
                 onClick={() => setCurrentView('dashboard')}
                 className={`px-4 py-2 rounded-lg transition ${currentView === 'dashboard' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+              >
+                <BarChart3 className="inline-block w-4 h-4 mr-2" />
+                Dashboard
+              </button>
+              <button
+                onClick={() => setCurrentView('complaints')}
+                className={`px-4 py-2 rounded-lg transition ${currentView === 'complaints' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
               >
                 <FileText className="inline-block w-4 h-4 mr-2" />
                 Complaints
               </button>
-              {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
-                <button
-                  onClick={() => setCurrentView('inventory')}
-                  className={`px-4 py-2 rounded-lg transition ${currentView === 'inventory' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-                >
-                  <Package className="inline-block w-4 h-4 mr-2" />
-                  Inventory
-                </button>
-              )}
+              <button
+                onClick={() => setCurrentView('inventory')}
+                className={`px-4 py-2 rounded-lg transition ${currentView === 'inventory' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+              >
+                <Package className="inline-block w-4 h-4 mr-2" />
+                Inventory
+              </button>
               {currentUser?.role === 'admin' && (
                 <>
                   <button
@@ -2629,18 +2627,18 @@ This report was generated from Johnny & Jugnu CMS.
         )}
 
         {/* ANALYTICS VIEW */}
-        {currentView === 'analytics' && (
+        {currentView === 'dashboard' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">
                   {(currentUser?.role === 'admin' || currentUser?.role === 'support')
-                    ? 'Analytics Dashboard - All Branches' 
-                    : `Analytics Dashboard - ${currentUser?.branch}`
+                    ? 'Dashboard - All Branches' 
+                    : `Dashboard - ${currentUser?.branch}`
                   }
                 </h2>
                 {currentUser?.role !== 'admin' && currentUser?.role !== 'support' && (
-                  <p className="text-sm text-gray-600 mt-1">Viewing analytics for your branch only</p>
+                  <p className="text-sm text-gray-600 mt-1">Viewing data for your branch only</p>
                 )}
               </div>
               <div className="flex gap-2">
@@ -2958,7 +2956,7 @@ This report was generated from Johnny & Jugnu CMS.
         )}
 
         {/* COMPLAINTS DASHBOARD */}
-        {currentView === 'dashboard' && (
+        {currentView === 'complaints' && (
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
@@ -3290,7 +3288,7 @@ This report was generated from Johnny & Jugnu CMS.
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4 mb-6">
               <button
-                onClick={() => setCurrentView('dashboard')}
+                onClick={() => setCurrentView('complaints')}
                 className="flex items-center text-gray-600 hover:text-gray-800 transition"
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
