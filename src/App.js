@@ -314,14 +314,23 @@ const JohnnyCMS = () => {
       
       // Filter by warehouse/branch - Support and Admin see all
       if (currentUser?.role !== 'admin' && currentUser?.role !== 'support') {
-        query = query.eq('warehouse_id', currentUser?.warehouse_id);
-      } else if (selectedWarehouse !== 'all') {
+        if (!currentUser?.warehouse_id) {
+          console.warn('User has no warehouse_id assigned:', currentUser);
+          setInventoryItems([]);
+          setLoading(false);
+          return;
+        }
+        console.log('Filtering inventory for warehouse_id:', currentUser.warehouse_id);
+        query = query.eq('warehouse_id', currentUser.warehouse_id);
+      } else if (selectedWarehouse && selectedWarehouse !== 'all') {
+        console.log('Admin filtering by selected warehouse:', selectedWarehouse);
         query = query.eq('warehouse_id', selectedWarehouse);
       }
       
       const { data, error } = await query.order('name', { ascending: true });
       
       if (error) throw error;
+      console.log('Loaded inventory items:', data?.length || 0);
       setInventoryItems(data || []);
     } catch (err) {
       console.error('Error loading inventory:', err);
