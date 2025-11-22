@@ -1017,24 +1017,39 @@ const JohnnyCMS = () => {
       setLoading(true);
       setError('');
       
+      console.log('Updating complaint with remarks:', {
+        complaintId: complaintRemarkData.complaintId,
+        newStatus: complaintRemarkData.newStatus,
+        remarks: complaintRemarkData.remarks
+      });
+      
       const { error } = await supabase
         .from('complaints')
         .update({ 
           status: complaintRemarkData.newStatus,
-          remarks: complaintRemarkData.remarks,
+          status_remarks: complaintRemarkData.remarks,
           updated_at: new Date().toISOString(),
           updated_by: currentUser?.username
         })
         .eq('id', complaintRemarkData.complaintId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
       
       await loadComplaints();
       setShowComplaintRemarkModal(false);
       setComplaintRemarkData({ complaintId: null, newStatus: '', remarks: '' });
     } catch (err) {
       console.error('Error updating status with remarks:', err);
-      setError('Failed to update status');
+      
+      // Check if it's a column error
+      if (err.message && (err.message.includes('column') || err.message.includes('status_remarks') || err.message.includes('updated_by'))) {
+        setError('Database columns missing. Please run migration SQL. Check console for details.');
+      } else {
+        setError(`Failed to update status: ${err.message || 'Unknown error'}`);
+      }
     } finally {
       setLoading(false);
     }
