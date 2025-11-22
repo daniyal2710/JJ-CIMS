@@ -364,23 +364,47 @@ const JohnnyCMS = () => {
             manager: newWarehouse.manager,
             phone: newWarehouse.phone,
             email: newWarehouse.email,
-            status: newWarehouse.status
+            status: newWarehouse.status,
+            assigned_user_id: newWarehouse.assigned_user_id || null
           })
           .eq('id', editingWarehouse.id);
         
         if (error) throw error;
+        
+        // Update user's warehouse_id if assigned
+        if (newWarehouse.assigned_user_id) {
+          const { error: userError } = await supabase
+            .from('users')
+            .update({ warehouse_id: editingWarehouse.id })
+            .eq('id', newWarehouse.assigned_user_id);
+          
+          if (userError) console.error('Error updating user warehouse:', userError);
+        }
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('warehouses')
           .insert([{
             ...newWarehouse,
-            created_by: currentUser?.username
-          }]);
+            created_by: currentUser?.username,
+            assigned_user_id: newWarehouse.assigned_user_id || null
+          }])
+          .select();
         
         if (error) throw error;
+        
+        // Update user's warehouse_id if assigned
+        if (newWarehouse.assigned_user_id && data && data[0]) {
+          const { error: userError } = await supabase
+            .from('users')
+            .update({ warehouse_id: data[0].id })
+            .eq('id', newWarehouse.assigned_user_id);
+          
+          if (userError) console.error('Error updating user warehouse:', userError);
+        }
       }
       
       await loadWarehouses();
+      await loadUsers(); // Reload users to get updated warehouse_id
       setNewWarehouse({
         name: '',
         branch: '',
@@ -388,7 +412,8 @@ const JohnnyCMS = () => {
         manager: '',
         phone: '',
         email: '',
-        status: 'active'
+        status: 'active',
+        assigned_user_id: ''
       });
       setEditingWarehouse(null);
       setShowWarehouseModal(false);
@@ -2231,7 +2256,8 @@ This report was generated from Johnny & Jugnu CMS.
                             manager: '',
                             phone: '',
                             email: '',
-                            status: 'active'
+                            status: 'active',
+                            assigned_user_id: ''
                           });
                         }}
                         className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center"
@@ -4463,6 +4489,23 @@ This report was generated from Johnny & Jugnu CMS.
                     <option value="inactive">Inactive</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Assigned User</label>
+                  <select
+                    value={newWarehouse.assigned_user_id || ''}
+                    onChange={(e) => setNewWarehouse({...newWarehouse, assigned_user_id: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="">-- Select User --</option>
+                    {users.filter(u => u.role !== 'admin').map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.username} ({user.role}) - {user.branch}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">User assigned to manage this warehouse</p>
+                </div>
               </div>
 
               <div className="flex gap-3 mt-4">
@@ -4476,7 +4519,8 @@ This report was generated from Johnny & Jugnu CMS.
                       manager: '',
                       phone: '',
                       email: '',
-                      status: 'active'
+                      status: 'active',
+                      assigned_user_id: ''
                     });
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
@@ -4539,6 +4583,12 @@ This report was generated from Johnny & Jugnu CMS.
                       
                       {warehouse.email && (
                         <p className="text-sm text-gray-600 mb-3">✉️ {warehouse.email}</p>
+                      )}
+                      
+                      {warehouse.assigned_user_id && (
+                        <p className="text-sm font-medium text-purple-600 mb-2">
+                          🔗 Assigned: {users.find(u => u.id === warehouse.assigned_user_id)?.username || 'User not found'}
+                        </p>
                       )}
                       
                       <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
