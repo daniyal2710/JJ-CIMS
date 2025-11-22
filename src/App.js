@@ -1062,7 +1062,10 @@ const JohnnyCMS = () => {
         })
         .eq('id', complaintRCAData.complaintId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw error;
+      }
       
       await loadComplaints();
       setShowComplaintRCAModal(false);
@@ -1070,7 +1073,13 @@ const JohnnyCMS = () => {
       alert('Complaint resolved successfully!');
     } catch (err) {
       console.error('Error resolving complaint:', err);
-      setError('Failed to resolve complaint');
+      
+      // Check if it's a column not found error
+      if (err.message && err.message.includes('column')) {
+        setError('Database columns missing. Please run the migration SQL first. Check console for details.');
+      } else {
+        setError(`Failed to resolve complaint: ${err.message || 'Unknown error'}`);
+      }
     } finally {
       setLoading(false);
     }
