@@ -2165,46 +2165,59 @@ This report was generated from Johnny & Jugnu CMS.
             </div>
             
             <nav className="hidden md:flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentView('dashboard')}
-                className={`px-4 py-2 rounded-lg transition ${currentView === 'dashboard' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-              >
-                <BarChart3 className="inline-block w-4 h-4 mr-2" />
-                Dashboard
-              </button>
-              <button
-                onClick={() => setCurrentView('complaints')}
-                className={`px-4 py-2 rounded-lg transition ${currentView === 'complaints' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-              >
-                <FileText className="inline-block w-4 h-4 mr-2" />
-                Complaints
-              </button>
-              <button
-                onClick={() => setCurrentView('inventory')}
-                className={`px-4 py-2 rounded-lg transition ${currentView === 'inventory' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-              >
-                <Package className="inline-block w-4 h-4 mr-2" />
-                Inventory
-              </button>
-              {currentUser?.role === 'admin' && (
-                <>
-                  <button
-                    onClick={() => setCurrentView('petty-cash')}
-                    className={`px-4 py-2 rounded-lg transition ${currentView === 'petty-cash' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-                  >
-                    <DollarSign className="inline-block w-4 h-4 mr-2" />
-                    Petty Cash
-                  </button>
-                  <button
-                    onClick={() => setCurrentView('users')}
-                    className={`px-4 py-2 rounded-lg transition ${currentView === 'users' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-                  >
-                    <Users className="inline-block w-4 h-4 mr-2" />
-                    Users
-                  </button>
-                </>
-              )}
-            </nav>
+  <button
+    onClick={() => setCurrentView('dashboard')}
+    className={`px-4 py-2 rounded-lg transition ${currentView === 'dashboard' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+  >
+    <BarChart3 className="inline-block w-4 h-4 mr-2" />
+    Dashboard
+  </button>
+  
+  <button
+    onClick={() => setCurrentView('complaints')}
+    className={`px-4 py-2 rounded-lg transition ${currentView === 'complaints' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+  >
+    <FileText className="inline-block w-4 h-4 mr-2" />
+    Complaints
+  </button>
+  
+  <button
+    onClick={() => setCurrentView('inventory')}
+    className={`px-4 py-2 rounded-lg transition ${currentView === 'inventory' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+  >
+    <Package className="inline-block w-4 h-4 mr-2" />
+    Inventory
+  </button>
+
+  {/* NEW REPORTS BUTTON */}
+  <button
+    onClick={() => setCurrentView('reports')}
+    className={`px-4 py-2 rounded-lg transition ${currentView === 'reports' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+  >
+    <BarChart3 className="inline-block w-4 h-4 mr-2" />
+    Reports
+  </button>
+
+  {currentUser?.role === 'admin' && (
+    <>
+      <button
+        onClick={() => setCurrentView('petty-cash')}
+        className={`px-4 py-2 rounded-lg transition ${currentView === 'petty-cash' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+      >
+        <DollarSign className="inline-block w-4 h-4 mr-2" />
+        Petty Cash
+      </button>
+      
+      <button
+        onClick={() => setCurrentView('users')}
+        className={`px-4 py-2 rounded-lg transition ${currentView === 'users' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+      >
+        <Users className="inline-block w-4 h-4 mr-2" />
+        Users
+      </button>
+    </>
+  )}
+</nav>
             
             <div className="flex items-center gap-3">
               <button className="text-white hover:text-orange-200">
