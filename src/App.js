@@ -5,6 +5,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import JohnnyReports from './JohnnyReports';
 
 const JohnnyCMS = () => {
   const [currentView, setCurrentView] = useState('welcome');
