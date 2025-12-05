@@ -4013,6 +4013,14 @@ This report was generated from Johnny & Jugnu CMS.
             )}
           </div>
         )}
+        {/* REPORTS VIEW */}
+        {currentView === 'reports' && (
+          <JohnnyReports 
+            complaints={complaints}
+            pettyCashEntries={pettyCashEntries}
+            currentUser={currentUser}
+          />
+        )}
       </main>
 
       {/* Inventory Item Modal */}
