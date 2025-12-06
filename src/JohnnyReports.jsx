@@ -11,6 +11,11 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0]
   });
+  
+  // Additional filters for each report type
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [rcaFilter, setRcaFilter] = useState('all');
+  const [equipmentFilter, setEquipmentFilter] = useState('all');
 
   // REPORT 1: COMPLAINT REPORT - BRANCH WISE
   const getComplaintsByBranch = () => {
@@ -18,7 +23,9 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
       const complaintDate = new Date(c.created_at);
       const startDate = new Date(dateFilter.startDate);
       const endDate = new Date(dateFilter.endDate);
-      return complaintDate >= startDate && complaintDate <= endDate;
+      const dateMatch = complaintDate >= startDate && complaintDate <= endDate;
+      const branchMatch = branchFilter === 'all' || c.branch === branchFilter;
+      return dateMatch && branchMatch;
     });
 
     const branchStats = {};
@@ -89,7 +96,9 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
       const entryDate = new Date(entry.dated);
       const startDate = new Date(dateFilter.startDate);
       const endDate = new Date(dateFilter.endDate);
-      return entryDate >= startDate && entryDate <= endDate;
+      const dateMatch = entryDate >= startDate && entryDate <= endDate;
+      const branchMatch = branchFilter === 'all' || entry.branch === branchFilter;
+      return dateMatch && branchMatch;
     });
 
     const branchExpenses = {};
@@ -149,7 +158,9 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
       const complaintDate = new Date(c.created_at);
       const startDate = new Date(dateFilter.startDate);
       const endDate = new Date(dateFilter.endDate);
-      return complaintDate >= startDate && complaintDate <= endDate && c.status === 'Resolved' && c.rca;
+      const dateMatch = complaintDate >= startDate && complaintDate <= endDate;
+      const rcaMatch = rcaFilter === 'all' || c.rca === rcaFilter;
+      return dateMatch && c.status === 'Resolved' && c.rca && rcaMatch;
     });
 
     const rcaStats = {};
@@ -245,6 +256,15 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
         if (keywords.some(keyword => description.includes(keyword))) {
           equipment = equipType;
           break;
+        }
+      }
+      
+      // Apply equipment filter
+      if (equipmentFilter !== 'all') {
+        // Extract base equipment type (remove suffix like "(Repair)")
+        const baseEquipment = equipment.split(' (')[0];
+        if (baseEquipment !== equipmentFilter) {
+          return; // Skip this entry if it doesn't match the filter
         }
       }
       
@@ -1016,7 +1036,12 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
       {/* Report Type Selector */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <button
-          onClick={() => setSelectedReport('complaint-branch')}
+          onClick={() => {
+            setSelectedReport('complaint-branch');
+            setBranchFilter('all');
+            setRcaFilter('all');
+            setEquipmentFilter('all');
+          }}
           className={`p-4 rounded-lg border-2 transition ${
             selectedReport === 'complaint-branch'
               ? 'border-orange-500 bg-orange-50'
@@ -1029,7 +1054,12 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
         </button>
 
         <button
-          onClick={() => setSelectedReport('expense-branch')}
+          onClick={() => {
+            setSelectedReport('expense-branch');
+            setBranchFilter('all');
+            setRcaFilter('all');
+            setEquipmentFilter('all');
+          }}
           className={`p-4 rounded-lg border-2 transition ${
             selectedReport === 'expense-branch'
               ? 'border-green-500 bg-green-50'
@@ -1042,7 +1072,12 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
         </button>
 
         <button
-          onClick={() => setSelectedReport('complaint-rca')}
+          onClick={() => {
+            setSelectedReport('complaint-rca');
+            setBranchFilter('all');
+            setRcaFilter('all');
+            setEquipmentFilter('all');
+          }}
           className={`p-4 rounded-lg border-2 transition ${
             selectedReport === 'complaint-rca'
               ? 'border-blue-500 bg-blue-50'
@@ -1055,7 +1090,12 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
         </button>
 
         <button
-          onClick={() => setSelectedReport('expense-equipment')}
+          onClick={() => {
+            setSelectedReport('expense-equipment');
+            setBranchFilter('all');
+            setRcaFilter('all');
+            setEquipmentFilter('all');
+          }}
           className={`p-4 rounded-lg border-2 transition ${
             selectedReport === 'expense-equipment'
               ? 'border-purple-500 bg-purple-50'
@@ -1070,7 +1110,7 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
 
       {/* Date Filter */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
             <input
@@ -1089,6 +1129,74 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
             />
           </div>
+          
+          {/* Branch Filter for Complaint Branch-wise and Expense Branch-wise */}
+          {(selectedReport === 'complaint-branch' || selectedReport === 'expense-branch') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
+              <select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+              >
+                <option value="all">All Branches</option>
+                {[...new Set(selectedReport === 'complaint-branch' 
+                  ? complaints.map(c => c.branch).filter(Boolean)
+                  : pettyCashEntries.map(e => e.branch).filter(Boolean)
+                )].sort().map(branch => (
+                  <option key={branch} value={branch}>{branch}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {/* RCA Filter for Complaint RCA-wise */}
+          {selectedReport === 'complaint-rca' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">RCA Type</label>
+              <select
+                value={rcaFilter}
+                onChange={(e) => setRcaFilter(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+              >
+                <option value="all">All RCA Types</option>
+                {[...new Set(complaints
+                  .filter(c => c.rca)
+                  .map(c => c.rca)
+                )].sort().map(rca => (
+                  <option key={rca} value={rca}>{rca}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {/* Equipment Filter for Expense Equipment-wise */}
+          {selectedReport === 'expense-equipment' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Equipment Type</label>
+              <select
+                value={equipmentFilter}
+                onChange={(e) => setEquipmentFilter(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+              >
+                <option value="all">All Equipment</option>
+                <option value="Camera">Camera</option>
+                <option value="Printer">Printer</option>
+                <option value="Computer">Computer</option>
+                <option value="Network">Network</option>
+                <option value="POS">POS</option>
+                <option value="LCD/Monitor">LCD/Monitor</option>
+                <option value="Keyboard/Mouse">Keyboard/Mouse</option>
+                <option value="Access Control">Access Control</option>
+                <option value="Cable/Wiring">Cable/Wiring</option>
+                <option value="UPS/Power">UPS/Power</option>
+                <option value="Server/NVR">Server/NVR</option>
+                <option value="Other Hardware">Other Hardware</option>
+                <option value="General/Other">General/Other</option>
+              </select>
+            </div>
+          )}
+          
           <div className="flex items-end gap-2">
             <button
               onClick={() => {
