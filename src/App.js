@@ -165,7 +165,7 @@ const JohnnyCMS = () => {
   payment_status: 'Pending',
   paid_amount: 0,
   comments: '',
-  equipment_type: ''
+  equipment_type: '',
   });
 
 const [pettyCashFilter, setPettyCashFilter] = useState({
