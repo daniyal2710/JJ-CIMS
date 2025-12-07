@@ -168,7 +168,7 @@ const JohnnyCMS = () => {
   equipment_type: ''  // ← ADD THIS LINE
 });
     
-  });
+  };
   const [pettyCashFilter, setPettyCashFilter] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
