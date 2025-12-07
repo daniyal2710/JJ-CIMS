@@ -154,17 +154,20 @@ const JohnnyCMS = () => {
   const [newCategory, setNewCategory] = useState({ name: '', department: 'IT' });
   const [pettyCashEntries, setPettyCashEntries] = useState([]);
   const [newPettyCash, setNewPettyCash] = useState({
-    month: new Date().toISOString().slice(0, 7),
-    dated: new Date().toISOString().split('T')[0],
-    description: '',
-    invoice_no: '',
-    complaint_no: '',
-    branch: '',
-    vendor: '',
-    amount: 0,
-    payment_status: 'Pending',
-    paid_amount: 0,
-    comments: ''
+  month: new Date().toISOString().slice(0, 7),
+  dated: new Date().toISOString().split('T')[0],
+  description: '',
+  invoice_no: '',
+  complaint_no: '',
+  branch: '',
+  vendor: '',
+  amount: 0,
+  payment_status: 'Pending',
+  paid_amount: 0,
+  comments: '',
+  equipment_type: ''  // ← ADD THIS LINE
+});
+    
   });
   const [pettyCashFilter, setPettyCashFilter] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -1304,19 +1307,19 @@ const JohnnyCMS = () => {
   };
 
   const handleAddPettyCash = async () => {
-    if (!newPettyCash.description || !newPettyCash.branch || !newPettyCash.amount) {
-      setError('Please fill in required fields: Description, Branch, and Amount');
-      return;
-    }
+  if (!newPettyCash.description || !newPettyCash.branch || !newPettyCash.amount || !newPettyCash.equipment_type) {
+    setError('Please fill in required fields: Description, Branch, Equipment Type, and Amount');
+    return;
+  }
 
-    try {
-      setLoading(true);
-      setError('');
-      
-      const entryData = {
-        ...newPettyCash,
-        created_by: currentUser?.username
-      };
+  try {
+    setLoading(true);
+    setError('');
+    
+    const entryData = {
+      ...newPettyCash,
+      created_by: currentUser?.username
+    };
 
       if (editingPettyCash) {
         const { error } = await supabase
@@ -1334,19 +1337,20 @@ const JohnnyCMS = () => {
       }
       
       await loadPettyCash();
-      setNewPettyCash({
-        month: new Date().toISOString().slice(0, 7),
-        dated: new Date().toISOString().split('T')[0],
-        description: '',
-        invoice_no: '',
-        complaint_no: '',
-        branch: '',
-        vendor: '',
-        amount: 0,
-        payment_status: 'Pending',
-        paid_amount: 0,
-        comments: ''
-      });
+     setNewPettyCash({
+  month: new Date().toISOString().slice(0, 7),
+  dated: new Date().toISOString().split('T')[0],
+  description: '',
+  invoice_no: '',
+  complaint_no: '',
+  branch: '',
+  vendor: '',
+  amount: 0,
+  payment_status: 'Pending',
+  paid_amount: 0,
+  comments: '',
+  equipment_type: ''  // ← ADD THIS LINE
+});
       setEditingPettyCash(null);
       setShowPettyCashModal(false);
     } catch (err) {
@@ -3749,21 +3753,22 @@ This report was generated from Johnny & Jugnu CMS.
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Sr No</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Month</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Invoice No</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Complaint No</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vendor</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Comments</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
+  <tr className="bg-gray-50 border-b">
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Sr No</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Month</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Invoice No</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Complaint No</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Equipment Type</th>  {/* ← ADD THIS */}
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vendor</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Comments</th>
+    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+  </tr>
+</thead>
                   <tbody>
                     {getFilteredPettyCash().map((entry, index) => (
                       <tr key={entry.id} className="border-b hover:bg-gray-50 transition">
@@ -3780,6 +3785,19 @@ This report was generated from Johnny & Jugnu CMS.
                             {entry.branch}
                           </span>
                         </td>
+{/* ← ADD EQUIPMENT TYPE CELL HERE */}
+      <td className="px-4 py-3">
+        {entry.equipment_type ? (
+          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+            {entry.equipment_type}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">Not Set</span>
+        )}
+      </td>
+      {/* ← EQUIPMENT TYPE CELL ENDS HERE */}
+
+
                         <td className="px-4 py-3 text-sm text-gray-700">{entry.vendor || '-'}</td>
                         <td className="px-4 py-3 text-sm font-bold text-green-600">
                           Rs {parseFloat(entry.amount || 0).toFixed(2)}
@@ -5370,6 +5388,24 @@ This report was generated from Johnny & Jugnu CMS.
                   ))}
                 </select>
               </div>
+
+              <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">Equipment Type *</label>
+  <select
+    value={newPettyCash.equipment_type}
+    onChange={(e) => setNewPettyCash({...newPettyCash, equipment_type: e.target.value})}
+    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+    disabled={loading}
+  >
+    <option value="">Select Equipment Type</option>
+    {equipmentTypes.map(type => (
+      <option key={type} value={type}>{type}</option>
+    ))}
+  </select>
+  <p className="text-xs text-gray-500 mt-1">
+    Select the type of equipment/expense
+  </p>
+</div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
