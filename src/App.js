@@ -183,8 +183,9 @@ const JohnnyCMS = () => {
   payment_status: 'Pending',
   paid_amount: 0,
   comments: '',
-  equipment_type: '',
-});
+  equipment_type: ''
+  }),
+};
 
 const [pettyCashFilter, setPettyCashFilter] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
