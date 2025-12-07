@@ -184,7 +184,7 @@ const JohnnyCMS = () => {
   paid_amount: 0,
   comments: '',
   equipment_type: ''
-  }),
+  });
 };
 
 const [pettyCashFilter, setPettyCashFilter] = useState({
