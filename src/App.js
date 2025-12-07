@@ -185,6 +185,23 @@ const [pettyCashFilter, setPettyCashFilter] = useState({
   const pettyCashVendors = ['local market', 'DAHUA', 'indriver', 'HAQ enterprise', 'BRAIN TECH', 'NKS', 'Other'];
   const pettyCashComments = ['New Installation', 'Repairing', 'transportation', 'Maintenance', 'Purchase', 'Other'];
   const paymentStatuses = ['Pending', 'Partially Paid', 'Paid'];
+  const equipmentTypes = [
+  'Camera',
+  'Printer',
+  'Computer',
+  'Network Equipment',
+  'POS System',
+  'LCD/Monitor',
+  'Keyboard/Mouse',
+  'Access Control',
+  'Cable/Wiring',
+  'UPS/Power',
+  'Server/NVR',
+  'Other Hardware',
+  'Furniture',
+  'Office Supplies',
+  'General/Other'
+];
 
   const inventoryCategories = ['Raw Materials', 'Ingredients', 'Packaging', 'Beverages', 'Sauces', 'Supplies', 'Equipment', ...customInventoryCategories];
   const units = ['kg', 'lbs', 'liters', 'pieces', 'boxes', 'bags', 'bottles'];
