@@ -224,19 +224,55 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
       const entryDate = new Date(entry.dated);
       const startDate = new Date(dateFilter.startDate);
       const endDate = new Date(dateFilter.endDate);
-      const dateMatch = entryDate >= startDate && entryDate <= endDate;
-      
-      // Apply equipment filter if set
-      const equipmentMatch = equipmentFilter === 'all' || entry.equipment_type === equipmentFilter;
-      
-      return dateMatch && equipmentMatch && entry.equipment_type; // Only include entries with equipment_type
+      return entryDate >= startDate && entryDate <= endDate;
     });
 
+    // Extract equipment/item from description
     const equipmentExpenses = {};
     
     filtered.forEach(entry => {
-      // Use the equipment_type field directly from database
-      const equipment = entry.equipment_type || 'General/Other';
+      // Try to identify equipment from description
+      const description = (entry.description || '').toLowerCase();
+      let equipment = 'General/Other';
+      
+      // Common equipment keywords
+      const equipmentKeywords = {
+        'Camera': ['camera', 'cctv', 'surveillance'],
+        'Printer': ['printer', 'printing', 'cartridge'],
+        'Computer': ['computer', 'cpu', 'pc', 'laptop'],
+        'Network': ['router', 'switch', 'network', 'wifi', 'internet'],
+        'POS': ['pos', 'cash drawer', 'receipt'],
+        'LCD/Monitor': ['lcd', 'monitor', 'screen', 'display'],
+        'Keyboard/Mouse': ['keyboard', 'mouse', 'numpad'],
+        'Access Control': ['access control', 'attendance', 'biometric'],
+        'Cable/Wiring': ['cable', 'wire', 'wiring', 'patch'],
+        'UPS/Power': ['ups', 'power', 'battery', 'pdu'],
+        'Server/NVR': ['server', 'nvr', 'dvr'],
+        'Other Hardware': ['adapter', 'vga', 'hdmi', 'usb']
+      };
+      
+      // Check description for equipment keywords
+      for (const [equipType, keywords] of Object.entries(equipmentKeywords)) {
+        if (keywords.some(keyword => description.includes(keyword))) {
+          equipment = equipType;
+          break;
+        }
+      }
+      
+      // Apply equipment filter
+      if (equipmentFilter !== 'all') {
+        // Extract base equipment type (remove suffix like "(Repair)")
+        const baseEquipment = equipment.split(' (')[0];
+        if (baseEquipment !== equipmentFilter) {
+          return; // Skip this entry if it doesn't match the filter
+        }
+      }
+      
+      // Also check comments field
+      const comments = (entry.comments || '').toLowerCase();
+      if (comments.includes('repairing')) equipment += ' (Repair)';
+      if (comments.includes('new installation')) equipment += ' (New)';
+      if (comments.includes('maintenance')) equipment += ' (Maintenance)';
       
       if (!equipmentExpenses[equipment]) {
         equipmentExpenses[equipment] = {
@@ -1147,8 +1183,8 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
                 <option value="Camera">Camera</option>
                 <option value="Printer">Printer</option>
                 <option value="Computer">Computer</option>
-                <option value="Network Equipment">Network Equipment</option>
-                <option value="POS System">POS System</option>
+                <option value="Network">Network</option>
+                <option value="POS">POS</option>
                 <option value="LCD/Monitor">LCD/Monitor</option>
                 <option value="Keyboard/Mouse">Keyboard/Mouse</option>
                 <option value="Access Control">Access Control</option>
@@ -1156,8 +1192,6 @@ const JohnnyReports = ({ complaints, pettyCashEntries, currentUser }) => {
                 <option value="UPS/Power">UPS/Power</option>
                 <option value="Server/NVR">Server/NVR</option>
                 <option value="Other Hardware">Other Hardware</option>
-                <option value="Furniture">Furniture</option>
-                <option value="Office Supplies">Office Supplies</option>
                 <option value="General/Other">General/Other</option>
               </select>
             </div>
