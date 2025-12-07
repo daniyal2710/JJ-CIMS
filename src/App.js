@@ -151,24 +151,6 @@ const JohnnyCMS = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [editingPettyCash, setEditingPettyCash] = useState(null);
   const [newUser, setNewUser] = useState({ username: '', password: '', email: '', role: 'user', branch: '' });
-  const equipmentTypes = [
-  'Camera',
-  'Printer', 
-  'Computer',
-  'Network Equipment',
-  'POS System',
-  'LCD/Monitor',
-  'Keyboard/Mouse',
-  'Access Control',
-  'Cable/Wiring',
-  'UPS/Power',
-  'Server/NVR',
-  'Other Hardware',
-  'Furniture',
-  'Office Supplies',
-  'General/Other'
-];
-  
   const [newCategory, setNewCategory] = useState({ name: '', department: 'IT' });
   const [pettyCashEntries, setPettyCashEntries] = useState([]);
   const [newPettyCash, setNewPettyCash] = useState({
@@ -185,7 +167,6 @@ const JohnnyCMS = () => {
   comments: '',
   equipment_type: ''
   });
-};
 
 const [pettyCashFilter, setPettyCashFilter] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
