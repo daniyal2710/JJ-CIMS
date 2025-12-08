@@ -151,9 +151,6 @@ const JohnnyCMS = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showPettyCashModal, setShowPettyCashModal] = useState(false);
-  const [showEquipmentTypeModal, setShowEquipmentTypeModal] = useState(false);
-  const [customEquipmentTypes, setCustomEquipmentTypes] = useState([]);
-  const [newEquipmentType, setNewEquipmentType] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [editingPettyCash, setEditingPettyCash] = useState(null);
   const [newUser, setNewUser] = useState({ username: '', password: '', email: '', role: 'user', branch: '' });
