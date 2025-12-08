@@ -24,8 +24,8 @@ const JohnnyCMS = () => {
   // Inventory States
   const [inventoryItems, setInventoryItems] = useState([]);
   const [showEquipmentTypeModal, setShowEquipmentTypeModal] = useState(false);
-const [customEquipmentTypes, setCustomEquipmentTypes] = useState([]);
-const [newEquipmentType, setNewEquipmentType] = useState('');
+  const [customEquipmentTypes, setCustomEquipmentTypes] = useState([]);
+  const [newEquipmentType, setNewEquipmentType] = useState('');
   const [suppliers, setSuppliers] = useState([]);
   const [stockMovements, setStockMovements] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -5785,7 +5785,6 @@ This report was generated from Johnny & Jugnu CMS.
               </button>
             </div>
           </div>
-      )}
     </div>
   );
 };
