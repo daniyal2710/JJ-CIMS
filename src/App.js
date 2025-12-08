@@ -5744,7 +5744,6 @@ This report was generated from Johnny & Jugnu CMS.
         </div>
       </div>
 
-      {/* Equipment Types List */}
       <div>
         <h4 className="text-sm font-semibold text-gray-700 mb-3">
           Equipment Types ({customEquipmentTypes.length})
