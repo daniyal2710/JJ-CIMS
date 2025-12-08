@@ -5787,7 +5787,6 @@ This report was generated from Johnny & Jugnu CMS.
           </div>
         </div>
       )};    
-  );
 };
 
 export default JohnnyCMS;
