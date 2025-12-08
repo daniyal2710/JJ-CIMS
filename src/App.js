@@ -5693,99 +5693,99 @@ This report was generated from Johnny & Jugnu CMS.
         </div>
       )}
     </div>
-    
-{showEquipmentTypeModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-800">
-          <Layers className="inline w-5 h-5 mr-2" />
-          Manage Equipment Types
-        </h3>
-        <button
-          onClick={() => {
-            setShowEquipmentTypeModal(false);
-            setNewEquipmentType('');
-            setError('');
-          }}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <X className="w-6 h-6" />
-        </button>
-      </div>
+    {/* EQUIPMENT TYPE MANAGEMENT MODAL */}
+      {showEquipmentTypeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                <Layers className="inline w-5 h-5 mr-2" />
+                Manage Equipment Types
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEquipmentTypeModal(false);
+                  setNewEquipmentType('');
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
-      {/* Add New Equipment Type */}
-      <div className="bg-purple-50 p-4 rounded-lg mb-6">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Equipment Type</h4>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newEquipmentType}
-            onChange={(e) => setNewEquipmentType(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAddEquipmentType()}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-            placeholder="Enter equipment type (e.g., Laptop, Router, Scanner)"
-            disabled={loading}
-          />
-          <button
-            onClick={handleAddEquipmentType}
-            disabled={loading}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
-          >
-            {loading ? (
-              <Loader className="animate-spin w-5 h-5" />
-            ) : (
-              <>
-                <Plus className="w-4 h-4 mr-2" />
-                Add
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">
-          Equipment Types ({customEquipmentTypes.length})
-        </h4>
-        {customEquipmentTypes.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-8">No equipment types yet. Add one above!</p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {customEquipmentTypes.map((type) => (
-              <div key={type} className="border border-purple-200 bg-purple-50 rounded-lg p-3 flex items-center justify-between hover:border-purple-400 transition">
-                <div className="flex items-center">
-                  <Layers className="w-4 h-4 text-purple-600 mr-2" />
-                  <span className="text-sm text-gray-800">{type}</span>
-                </div>
-                <button
-                  onClick={() => handleDeleteEquipmentType(type)}
-                  className="text-red-600 hover:text-red-800"
+            <div className="bg-purple-50 p-4 rounded-lg mb-6">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Equipment Type</h4>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newEquipmentType}
+                  onChange={(e) => setNewEquipmentType(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddEquipmentType()}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                  placeholder="Enter equipment type (e.g., Laptop, Router, Scanner)"
                   disabled={loading}
+                />
+                <button
+                  onClick={handleAddEquipmentType}
+                  disabled={loading}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {loading ? (
+                    <Loader className="animate-spin w-5 h-5" />
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add
+                    </>
+                  )}
                 </button>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
 
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={() => {
-            setShowEquipmentTypeModal(false);
-            setNewEquipmentType('');
-            setError('');
-          }}
-          className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-        >
-          Close
-        </button>
-      </div>
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                Equipment Types ({customEquipmentTypes.length})
+              </h4>
+              {customEquipmentTypes.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">No equipment types yet. Add one above!</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {customEquipmentTypes.map((type) => (
+                    <div key={type} className="border border-purple-200 bg-purple-50 rounded-lg p-3 flex items-center justify-between hover:border-purple-400 transition">
+                      <div className="flex items-center">
+                        <Layers className="w-4 h-4 text-purple-600 mr-2" />
+                        <span className="text-sm text-gray-800">{type}</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteEquipmentType(type)}
+                        className="text-red-600 hover:text-red-800"
+                        disabled={loading}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowEquipmentTypeModal(false);
+                  setNewEquipmentType('');
+                  setError('');
+                }}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Close
+              </button>
+              </div>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-)}
   );
 };
 
