@@ -20,11 +20,6 @@ const JohnnyCMS = () => {
   const [allCategories, setAllCategories] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [searchComplaintNumber, setSearchComplaintNumber] = useState('');
-  const [features, setFeatures] = useState([]);
-  const [userFeatures, setUserFeatures] = useState([]);
-  const [showFeatureModal, setShowFeatureModal] = useState(false);
-  const [selectedUserForFeatures, setSelectedUserForFeatures] = useState(null);
-  const [currentUserFeatures, setCurrentUserFeatures] = useState([]);
 
   // Inventory States
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -294,11 +289,9 @@ const [pettyCashFilter, setPettyCashFilter] = useState({
       loadStockMovements();
       loadInventoryCategories();
       loadWarehouses();
-      loadFeatures();  // ADD THIS
-      loadCurrentUserFeatures();  // ADD THIS
       if (currentUser?.role === 'admin') {
-      loadUsers();
-      loadPettyCash();
+        loadUsers();
+        loadPettyCash();
       }
     }
   }, [isLoggedIn, currentUser]);
@@ -316,104 +309,6 @@ const [pettyCashFilter, setPettyCashFilter] = useState({
       console.error('Error loading users:', err);
     }
   };
-  const loadFeatures = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('features')
-      .select('*')
-      .order('name', { ascending: true });
-    
-    if (error) throw error;
-    setFeatures(data || []);
-  } catch (err) {
-    console.error('Error loading features:', err);
-  }
-};
-
-    const loadUserFeatures = async (userId) => {
-      try {
-        const { data, error } = await supabase
-          .from('user_features')
-          .select(`
-            *,
-            features (*)
-          `)
-          .eq('user_id', userId);
-        
-        if (error) throw error;
-        return data || [];
-      } catch (err) {
-        console.error('Error loading user features:', err);
-        return [];
-      }
-    };
-
-    const loadCurrentUserFeatures = async () => {
-      if (!currentUser?.id) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('user_features')
-          .select(`
-            feature_id,
-            features (name, route)
-          `)
-          .eq('user_id', currentUser.id);
-        
-        if (error) throw error;
-        
-        const featureRoutes = data?.map(uf => uf.features.route) || [];
-        setCurrentUserFeatures(featureRoutes);
-      } catch (err) {
-        console.error('Error loading current user features:', err);
-      }
-    };
-
-    const hasFeatureAccess = (featureRoute) => {
-      // Admin always has access
-      if (currentUser?.role === 'admin') return true;
-      
-      // Check if user has this feature
-      return currentUserFeatures.includes(featureRoute);
-    };
-
-    const handleToggleUserFeature = async (userId, featureId, currentlyHas) => {
-      try {
-        setLoading(true);
-        
-        if (currentlyHas) {
-          // Remove feature
-          const { error } = await supabase
-            .from('user_features')
-            .delete()
-            .eq('user_id', userId)
-            .eq('feature_id', featureId);
-          
-          if (error) throw error;
-        } else {
-          // Add feature
-          const { error } = await supabase
-            .from('user_features')
-            .insert([{
-              user_id: userId,
-              feature_id: featureId,
-              granted_by: currentUser?.username
-            }]);
-          
-          if (error) throw error;
-        }
-        
-        // Reload user features
-        const updatedFeatures = await loadUserFeatures(userId);
-        setUserFeatures(updatedFeatures);
-        
-      } catch (err) {
-        console.error('Error toggling user feature:', err);
-        setError('Failed to update user features');
-      } finally {
-        setLoading(false);
-      }
-    };
 
   const loadCategories = async () => {
     try {
@@ -2293,67 +2188,60 @@ This report was generated from Johnny & Jugnu CMS.
             </div>
             
             <nav className="hidden md:flex items-center space-x-2">
-            <button
-              onClick={() => setCurrentView('dashboard')}
-              className={`px-4 py-2 rounded-lg transition ${currentView === 'dashboard' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-            >
-              <BarChart3 className="inline-block w-4 h-4 mr-2" />
-              Dashboard
-            </button>
-            
-            {hasFeatureAccess('complaints') && (
-              <button
-                onClick={() => setCurrentView('complaints')}
-                className={`px-4 py-2 rounded-lg transition ${currentView === 'complaints' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-              >
-                <FileText className="inline-block w-4 h-4 mr-2" />
-                Complaints
-              </button>
-            )}
-            
-            {hasFeatureAccess('inventory') && (
-              <button
-                onClick={() => setCurrentView('inventory')}
-                className={`px-4 py-2 rounded-lg transition ${currentView === 'inventory' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-              >
-                <Package className="inline-block w-4 h-4 mr-2" />
-                Inventory
-              </button>
-            )}
+  <button
+    onClick={() => setCurrentView('dashboard')}
+    className={`px-4 py-2 rounded-lg transition ${currentView === 'dashboard' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+  >
+    <BarChart3 className="inline-block w-4 h-4 mr-2" />
+    Dashboard
+  </button>
+  
+  <button
+    onClick={() => setCurrentView('complaints')}
+    className={`px-4 py-2 rounded-lg transition ${currentView === 'complaints' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+  >
+    <FileText className="inline-block w-4 h-4 mr-2" />
+    Complaints
+  </button>
+  
+  <button
+    onClick={() => setCurrentView('inventory')}
+    className={`px-4 py-2 rounded-lg transition ${currentView === 'inventory' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+  >
+    <Package className="inline-block w-4 h-4 mr-2" />
+    Inventory
+  </button>
 
-            {hasFeatureAccess('reports') && (
-              <button
-                onClick={() => setCurrentView('reports')}
-                className={`px-4 py-2 rounded-lg transition ${currentView === 'reports' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-              >
-                <BarChart3 className="inline-block w-4 h-4 mr-2" />
-                Reports
-              </button>
-            )}
+  {/* NEW REPORTS BUTTON */}
+  <button
+    onClick={() => setCurrentView('reports')}
+    className={`px-4 py-2 rounded-lg transition ${currentView === 'reports' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+  >
+    <BarChart3 className="inline-block w-4 h-4 mr-2" />
+    Reports
+  </button>
 
-            {currentUser?.role === 'admin' && (
-              <>
-                {hasFeatureAccess('petty-cash') && (
-                  <button
-                    onClick={() => setCurrentView('petty-cash')}
-                    className={`px-4 py-2 rounded-lg transition ${currentView === 'petty-cash' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-                  >
-                    <DollarSign className="inline-block w-4 h-4 mr-2" />
-                    Petty Cash
-                  </button>
-                )}
-                
-                <button
-                  onClick={() => setCurrentView('users')}
-                  className={`px-4 py-2 rounded-lg transition ${currentView === 'users' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
-                >
-                  <Users className="inline-block w-4 h-4 mr-2" />
-                  Users
-                </button>
-              </>
-            )}
-          </nav>
-                      
+  {currentUser?.role === 'admin' && (
+    <>
+      <button
+        onClick={() => setCurrentView('petty-cash')}
+        className={`px-4 py-2 rounded-lg transition ${currentView === 'petty-cash' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+      >
+        <DollarSign className="inline-block w-4 h-4 mr-2" />
+        Petty Cash
+      </button>
+      
+      <button
+        onClick={() => setCurrentView('users')}
+        className={`px-4 py-2 rounded-lg transition ${currentView === 'users' ? 'bg-white text-orange-600' : 'hover:bg-orange-400'}`}
+      >
+        <Users className="inline-block w-4 h-4 mr-2" />
+        Users
+      </button>
+    </>
+  )}
+</nav>
+            
             <div className="flex items-center gap-3">
               <button className="text-white hover:text-orange-200">
                 <Bell className="w-6 h-6" />
@@ -4008,94 +3896,80 @@ This report was generated from Johnny & Jugnu CMS.
         )}
 
         {/* USERS MANAGEMENT */}
-{currentView === 'users' && currentUser?.role === 'admin' && (
-  <div>
-    <div className="flex justify-between items-center mb-6">
-      <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-      <button
-        onClick={() => {
-          setEditingUser(null);
-          setNewUser({ username: '', password: '', email: '', role: 'user', branch: '' });
-          setShowUserModal(true);
-        }}
-        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
-      >
-        <Plus className="inline-block w-4 h-4 mr-2" />
-        Add User
-      </button>
-    </div>
+        {currentView === 'users' && currentUser?.role === 'admin' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+              <button
+                onClick={() => {
+                  setEditingUser(null);
+                  setNewUser({ username: '', password: '', email: '', role: 'user', branch: '' });
+                  setShowUserModal(true);
+                }}
+                className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
+              >
+                <Plus className="inline-block w-4 h-4 mr-2" />
+                Add User
+              </button>
+            </div>
 
-    <div className="bg-white rounded-xl shadow-md overflow-hidden">
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader className="animate-spin w-8 h-8 text-orange-500" />
-        </div>
-      ) : (
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Username</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Features</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-b hover:bg-gray-50 transition">
-                <td className="px-6 py-4 text-sm text-gray-700">{user.username}</td>
-                <td className="px-6 py-4 text-sm text-gray-700">{user.email}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    user.role === 'admin' ? 'bg-red-100 text-red-700' : 
-                    user.role === 'support' ? 'bg-purple-100 text-purple-700' :
-                    'bg-blue-100 text-blue-700'
-                  }`}>
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">{user.branch}</td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={async () => {
-                      setSelectedUserForFeatures(user);
-                      const userFeats = await loadUserFeatures(user.id);
-                      setUserFeatures(userFeats);
-                      setShowFeatureModal(true);
-                    }}
-                    className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition text-xs font-semibold"
-                  >
-                    Manage Features
-                  </button>
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => {
-                      setEditingUser(user);
-                      setNewUser(user);
-                      setShowUserModal(true);
-                    }}
-                    className="text-orange-600 hover:text-orange-800 mr-3"
-                  >
-                    <Edit className="w-4 h-4 inline" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteUser(user.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="w-4 h-4 inline" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  </div>
-)}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              {loading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader className="animate-spin w-8 h-8 text-orange-500" />
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Username</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} className="border-b hover:bg-gray-50 transition">
+                        <td className="px-6 py-4 text-sm text-gray-700">{user.username}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{user.email}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            user.role === 'admin' ? 'bg-red-100 text-red-700' : 
+                            user.role === 'support' ? 'bg-purple-100 text-purple-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{user.branch}</td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => {
+                              setEditingUser(user);
+                              setNewUser(user);
+                              setShowUserModal(true);
+                            }}
+                            className="text-orange-600 hover:text-orange-800 mr-3"
+                          >
+                            <Edit className="w-4 h-4 inline" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4 inline" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* CATEGORIES MANAGEMENT */}
         {currentView === 'categories' && currentUser?.role === 'admin' && (
@@ -5557,22 +5431,22 @@ This report was generated from Johnny & Jugnu CMS.
               </div>
 
               <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Equipment Type *</label>
-            <select
-              value={newPettyCash.equipment_type}
-              onChange={(e) => setNewPettyCash({...newPettyCash, equipment_type: e.target.value})}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-              disabled={loading}
-            >
-              <option value="">Select Equipment Type</option>
-              {equipmentTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Select the type of equipment/expense
-            </p>
-          </div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">Equipment Type *</label>
+  <select
+    value={newPettyCash.equipment_type}
+    onChange={(e) => setNewPettyCash({...newPettyCash, equipment_type: e.target.value})}
+    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+    disabled={loading}
+  >
+    <option value="">Select Equipment Type</option>
+    {equipmentTypes.map(type => (
+      <option key={type} value={type}>{type}</option>
+    ))}
+  </select>
+  <p className="text-xs text-gray-500 mt-1">
+    Select the type of equipment/expense
+  </p>
+</div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
@@ -5779,107 +5653,7 @@ This report was generated from Johnny & Jugnu CMS.
             </div>
           </div>
         </div>
-      )} 
-                /* FEATURE MANAGEMENT MODAL */}
-                      {showFeatureModal && selectedUserForFeatures && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6">
-                            <div className="flex justify-between items-center mb-6">
-                              <div>
-                                <h3 className="text-xl font-bold text-gray-800">Manage Features</h3>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  User: <span className="font-semibold">{selectedUserForFeatures.username}</span> ({selectedUserForFeatures.role})
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  setShowFeatureModal(false);
-                                  setSelectedUserForFeatures(null);
-                                  setUserFeatures([]);
-                                }}
-                                className="text-gray-500 hover:text-gray-700"
-                              >
-                                <X className="w-6 h-6" />
-                              </button>
-                            </div>
-
-                            {selectedUserForFeatures.role === 'admin' && (
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                                <p className="text-sm text-blue-700">
-                                  <strong>Note:</strong> Admin users have access to all features by default.
-                                </p>
-                              </div>
-                            )}
-
-                            <div className="space-y-3">
-                              {features.map((feature) => {
-                                const userHasFeature = userFeatures.some(uf => uf.feature_id === feature.id);
-                                const isAdmin = selectedUserForFeatures.role === 'admin';
-                                
-                                return (
-                                  <div
-                                    key={feature.id}
-                                    className={`border rounded-lg p-4 flex items-center justify-between transition ${
-                                      userHasFeature || isAdmin ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                        userHasFeature || isAdmin ? 'bg-green-500' : 'bg-gray-300'
-                                      }`}>
-                                        {feature.icon === 'FileText' && <FileText className="w-5 h-5 text-white" />}
-                                        {feature.icon === 'Package' && <Package className="w-5 h-5 text-white" />}
-                                        {feature.icon === 'BarChart3' && <BarChart3 className="w-5 h-5 text-white" />}
-                                        {feature.icon === 'DollarSign' && <DollarSign className="w-5 h-5 text-white" />}
-                                      </div>
-                                      <div>
-                                        <h4 className="font-semibold text-gray-800">{feature.name}</h4>
-                                        <p className="text-sm text-gray-600">{feature.description}</p>
-                                      </div>
-                                    </div>
-                                    
-                                    <button
-                                      onClick={() => handleToggleUserFeature(selectedUserForFeatures.id, feature.id, userHasFeature)}
-                                      disabled={loading || isAdmin}
-                                      className={`px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                                        userHasFeature || isAdmin
-                                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                          : 'bg-green-100 text-green-700 hover:bg-green-200'
-                                      }`}
-                                    >
-                                      {loading ? (
-                                        <Loader className="animate-spin w-4 h-4" />
-                                      ) : userHasFeature || isAdmin ? (
-                                        'Revoke'
-                                      ) : (
-                                        'Grant'
-                                      )}
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            <div className="mt-6 flex justify-end">
-                              <button
-                                onClick={() => {
-                                  setShowFeatureModal(false);
-                                  setSelectedUserForFeatures(null);
-                                  setUserFeatures([]);
-                                  // Reload current user features if editing own features
-                                  if (selectedUserForFeatures.id === currentUser?.id) {
-                                    loadCurrentUserFeatures();
-                                  }
-                                }}
-                                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                              >
-                                Close
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-        
+      )}
     </div>
   );
 };
