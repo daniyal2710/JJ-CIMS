@@ -131,11 +131,12 @@ const JohnnyCMS = () => {
   const movementTypes = ['scrap', 'faulty', 'extra', 'new'];
 
   const [newComplaint, setNewComplaint] = useState({
-    department: 'IT',
-    category: '',
-    comments: '',
-    priority: 'Medium',
-    assigned_to: ''
+  department: 'IT',
+  category: '',
+  comments: '',
+  priority: 'Medium',
+  assigned_to: '',
+  asset_tag: ''  // ADD THIS LINE
   });
 
   const [filterData, setFilterData] = useState({
@@ -981,10 +982,10 @@ const [pettyCashFilter, setPettyCashFilter] = useState({
   };
 
   const handleAddComplaint = async () => {
-    if (!newComplaint.category || !newComplaint.comments) {
-      setError('Please fill in all required fields');
-      return;
-    }
+  if (!newComplaint.category || !newComplaint.comments || !newComplaint.asset_tag) {
+    setError('Please fill in all required fields including Asset Tag');
+    return;
+  }
 
     try {
       setLoading(true);
@@ -993,24 +994,25 @@ const [pettyCashFilter, setPettyCashFilter] = useState({
       const complaintNumber = await generateComplaintNumber();
       
       const { error } = await supabase
-        .from('complaints')
-        .insert([{
-          complaint_number: complaintNumber,
-          department: newComplaint.department,
-          category: newComplaint.category,
-          comments: newComplaint.comments,
-          priority: newComplaint.priority,
-          status: 'Open',
-          branch: currentUser?.branch || 'Unknown',
-          assigned_to: newComplaint.assigned_to || null,
-          created_by: currentUser?.username || 'unknown'
-        }])
-        .select();
+      .from('complaints')
+      .insert([{
+      complaint_number: complaintNumber,
+      department: newComplaint.department,
+      category: newComplaint.category,
+      comments: newComplaint.comments,
+      priority: newComplaint.priority,
+      status: 'Open',
+      branch: currentUser?.branch || 'Unknown',
+      assigned_to: newComplaint.assigned_to || null,
+      asset_tag: newComplaint.asset_tag,  // ADD THIS LINE
+      created_by: currentUser?.username || 'unknown'
+      }])
+      .select();
       
       if (error) throw error;
       
       await loadComplaints();
-      setNewComplaint({ department: 'IT', category: '', comments: '', priority: 'Medium', assigned_to: '' });
+      setNewComplaint({ department: 'IT', category: '', comments: '', priority: 'Medium', assigned_to: '', asset_tag: '' });
       setCurrentView('complaints');
       
       alert(`Complaint created successfully!\nComplaint Number: ${complaintNumber}`);
@@ -3282,6 +3284,7 @@ This report was generated from Johnny & Jugnu CMS.
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Assigned To</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Asset Tag</th>
                         {currentUser?.role === 'admin' && (
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created By</th>
                         )}
@@ -3383,6 +3386,11 @@ This report was generated from Johnny & Jugnu CMS.
                             >
                               {expandedComplaint === complaint.id ? '▼ Hide' : '▶ View'}
                             </button>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
+                              {complaint.asset_tag || 'N/A'}
+                            </span>
                           </td>
                         </tr>
                         
@@ -3525,6 +3533,22 @@ This report was generated from Johnny & Jugnu CMS.
                       <p className="text-sm text-orange-600 mt-1">No categories available for this department</p>
                     )}
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Asset Tag Number *
+                    </label>
+                    <input
+                      type="text"
+                      value={newComplaint.asset_tag}
+                      onChange={(e) => setNewComplaint({...newComplaint, asset_tag: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                      placeholder="Enter asset tag number (e.g., AST-2025-001)"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Required: Equipment identification number
+                    </p>
+                  </div>
+                  
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Priority *</label>
