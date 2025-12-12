@@ -3723,13 +3723,13 @@ This report was generated from Johnny & Jugnu CMS.
                                 )}
                               </React.Fragment>
                             ))}
-          </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+                        </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>  // Closes bg-white rounded-xl shadow-md p-6
+                </div>     // Closes w-full
+              )}           // Closes current
 
         {/* ADD NEW COMPLAINT */}
         {currentView === 'add' && (
