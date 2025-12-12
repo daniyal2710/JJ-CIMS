@@ -3723,13 +3723,13 @@ This report was generated from Johnny & Jugnu CMS.
                                 )}
                               </React.Fragment>
                             ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
+          </tbody>
+                  </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
 
         {/* ADD NEW COMPLAINT */}
         {currentView === 'add' && (
@@ -3755,7 +3755,12 @@ This report was generated from Johnny & Jugnu CMS.
                     <select
                       value={newComplaint.department}
                       onChange={(e) => {
-                        setNewComplaint({...newComplaint, department: e.target.value, category: ''});
+                        setNewComplaint({
+                          ...newComplaint, 
+                          department: e.target.value, 
+                          category: '',
+                          sub_category: ''
+                        });
                       }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
                     >
@@ -3765,48 +3770,48 @@ This report was generated from Johnny & Jugnu CMS.
                     </select>
                   </div>
                   
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-                          <select
-                            value={newComplaint.category}
-                            onChange={(e) => setNewComplaint({
-                              ...newComplaint, 
-                              category: e.target.value,
-                              sub_category: ''  // Reset sub-category when category changes
-                            })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                          >
-                            <option value="">Select Category</option>
-                            {getCategoriesByDepartment(newComplaint.department).map((cat) => (
-                              <option key={cat.id} value={cat.name}>{cat.name}</option>
-                            ))}
-                          </select>
-                          {getCategoriesByDepartment(newComplaint.department).length === 0 && (
-                            <p className="text-sm text-orange-600 mt-1">No categories available for this department</p>
-                          )}
-                        </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                    <select
+                      value={newComplaint.category}
+                      onChange={(e) => setNewComplaint({
+                        ...newComplaint, 
+                        category: e.target.value,
+                        sub_category: ''
+                      })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                    >
+                      <option value="">Select Category</option>
+                      {getCategoriesByDepartment(newComplaint.department).map((cat) => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
+                    {getCategoriesByDepartment(newComplaint.department).length === 0 && (
+                      <p className="text-sm text-orange-600 mt-1">No categories available for this department</p>
+                    )}
+                  </div>
 
-                        {/* ADD SUB-CATEGORY FIELD */}
-                        {newComplaint.category && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Sub-Category {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).length > 0 && '*'}
-                            </label>
-                            <select
-                              value={newComplaint.sub_category}
-                              onChange={(e) => setNewComplaint({...newComplaint, sub_category: e.target.value})}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                            >
-                              <option value="">Select Sub-Category (Optional)</option>
-                              {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).map((subCat) => (
-                                <option key={subCat.id} value={subCat.name}>{subCat.name}</option>
-                              ))}
-                            </select>
-                            {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).length === 0 && (
-                              <p className="text-sm text-gray-500 mt-1">No sub-categories available for this category</p>
-                            )}
-                          </div>
-                        )}
+                  {newComplaint.category && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sub-Category {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).length > 0 && '(Optional)'}
+                      </label>
+                      <select
+                        value={newComplaint.sub_category}
+                        onChange={(e) => setNewComplaint({...newComplaint, sub_category: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                      >
+                        <option value="">Select Sub-Category (Optional)</option>
+                        {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).map((subCat) => (
+                          <option key={subCat.id} value={subCat.name}>{subCat.name}</option>
+                        ))}
+                      </select>
+                      {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).length === 0 && (
+                        <p className="text-sm text-gray-500 mt-1">No sub-categories available for this category</p>
+                      )}
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Asset Tag Number *
@@ -3822,7 +3827,6 @@ This report was generated from Johnny & Jugnu CMS.
                       Required: Equipment identification number
                     </p>
                   </div>
-                  
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Priority *</label>
@@ -3911,6 +3915,9 @@ This report was generated from Johnny & Jugnu CMS.
                         </div>
                       </div>
                       <span className="text-xs font-semibold text-orange-600">{c.category}</span>
+                      {c.sub_category && (
+                        <span className="text-xs text-indigo-600 ml-2">→ {c.sub_category}</span>
+                      )}
                       <p className="text-sm text-gray-700 line-clamp-2 mt-1">{c.comments}</p>
                       <p className="text-xs text-gray-500 mt-2">{c.date}</p>
                     </div>
