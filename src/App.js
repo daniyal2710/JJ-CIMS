@@ -4075,22 +4075,22 @@ This report was generated from Johnny & Jugnu CMS.
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-  <tr className="bg-gray-50 border-b">
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Sr No</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Month</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Invoice No</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Complaint No</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Equipment Type</th>  {/* ← ADD THIS */}
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vendor</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Comments</th>
-    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
-  </tr>
-</thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Sr No</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Month</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Invoice No</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Complaint No</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Equipment Type</th>  {/* ← ADD THIS */}
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Vendor</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Comments</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {getFilteredPettyCash().map((entry, index) => (
                       <tr key={entry.id} className="border-b hover:bg-gray-50 transition">
@@ -4107,17 +4107,17 @@ This report was generated from Johnny & Jugnu CMS.
                             {entry.branch}
                           </span>
                         </td>
-{/* ← ADD EQUIPMENT TYPE CELL HERE */}
-      <td className="px-4 py-3">
-        {entry.equipment_type ? (
-          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
-            {entry.equipment_type}
-          </span>
-        ) : (
-          <span className="text-xs text-gray-400">Not Set</span>
-        )}
-      </td>
-      {/* ← EQUIPMENT TYPE CELL ENDS HERE */}
+                  {/* ← ADD EQUIPMENT TYPE CELL HERE */}
+                        <td className="px-4 py-3">
+                          {entry.equipment_type ? (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+                              {entry.equipment_type}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">Not Set</span>
+                          )}
+                        </td>
+                        {/* ← EQUIPMENT TYPE CELL ENDS HERE */}
 
 
                         <td className="px-4 py-3 text-sm text-gray-700">{entry.vendor || '-'}</td>
@@ -4177,94 +4177,94 @@ This report was generated from Johnny & Jugnu CMS.
         )}
 
         {/* USERS MANAGEMENT */}
-{currentView === 'users' && currentUser?.role === 'admin' && (
-  <div>
-    <div className="flex justify-between items-center mb-6">
-      <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-      <button
-        onClick={() => {
-          setEditingUser(null);
-          setNewUser({ username: '', password: '', email: '', role: 'user', branch: '' });
-          setShowUserModal(true);
-        }}
-        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
-      >
-        <Plus className="inline-block w-4 h-4 mr-2" />
-        Add User
-      </button>
-    </div>
+                {currentView === 'users' && currentUser?.role === 'admin' && (
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+                      <button
+                        onClick={() => {
+                          setEditingUser(null);
+                          setNewUser({ username: '', password: '', email: '', role: 'user', branch: '' });
+                          setShowUserModal(true);
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
+                      >
+                        <Plus className="inline-block w-4 h-4 mr-2" />
+                        Add User
+                      </button>
+                    </div>
 
-    <div className="bg-white rounded-xl shadow-md overflow-hidden">
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader className="animate-spin w-8 h-8 text-orange-500" />
-        </div>
-      ) : (
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Username</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Features</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-b hover:bg-gray-50 transition">
-                <td className="px-6 py-4 text-sm text-gray-700">{user.username}</td>
-                <td className="px-6 py-4 text-sm text-gray-700">{user.email}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    user.role === 'admin' ? 'bg-red-100 text-red-700' : 
-                    user.role === 'support' ? 'bg-purple-100 text-purple-700' :
-                    'bg-blue-100 text-blue-700'
-                  }`}>
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">{user.branch}</td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={async () => {
-                      setSelectedUserForFeatures(user);
-                      const userFeats = await loadUserFeatures(user.id);
-                      setUserFeatures(userFeats);
-                      setShowFeatureModal(true);
-                    }}
-                    className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition text-xs font-semibold"
-                  >
-                    Manage Features
-                  </button>
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => {
-                      setEditingUser(user);
-                      setNewUser(user);
-                      setShowUserModal(true);
-                    }}
-                    className="text-orange-600 hover:text-orange-800 mr-3"
-                  >
-                    <Edit className="w-4 h-4 inline" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteUser(user.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="w-4 h-4 inline" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  </div>
-)}
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                      {loading ? (
+                        <div className="flex justify-center items-center py-12">
+                          <Loader className="animate-spin w-8 h-8 text-orange-500" />
+                        </div>
+                      ) : (
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-gray-50 border-b">
+                              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Username</th>
+                              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
+                              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Branch</th>
+                              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Features</th>
+                              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {users.map((user) => (
+                              <tr key={user.id} className="border-b hover:bg-gray-50 transition">
+                                <td className="px-6 py-4 text-sm text-gray-700">{user.username}</td>
+                                <td className="px-6 py-4 text-sm text-gray-700">{user.email}</td>
+                                <td className="px-6 py-4">
+                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                    user.role === 'admin' ? 'bg-red-100 text-red-700' : 
+                                    user.role === 'support' ? 'bg-purple-100 text-purple-700' :
+                                    'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-700">{user.branch}</td>
+                                <td className="px-6 py-4">
+                                  <button
+                                    onClick={async () => {
+                                      setSelectedUserForFeatures(user);
+                                      const userFeats = await loadUserFeatures(user.id);
+                                      setUserFeatures(userFeats);
+                                      setShowFeatureModal(true);
+                                    }}
+                                    className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition text-xs font-semibold"
+                                  >
+                                    Manage Features
+                                  </button>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <button
+                                    onClick={() => {
+                                      setEditingUser(user);
+                                      setNewUser(user);
+                                      setShowUserModal(true);
+                                    }}
+                                    className="text-orange-600 hover:text-orange-800 mr-3"
+                                  >
+                                    <Edit className="w-4 h-4 inline" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    <Trash2 className="w-4 h-4 inline" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                )}
 
         {/* CATEGORIES MANAGEMENT */}
         {currentView === 'categories' && currentUser?.role === 'admin' && (
