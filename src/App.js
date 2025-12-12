@@ -25,6 +25,15 @@ const JohnnyCMS = () => {
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [selectedUserForFeatures, setSelectedUserForFeatures] = useState(null);
   const [currentUserFeatures, setCurrentUserFeatures] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
+  const [allSubCategories, setAllSubCategories] = useState([]);
+  const [showSubCategoryModal, setShowSubCategoryModal] = useState(false);
+  const [newSubCategory, setNewSubCategory] = useState({ 
+    name: '', 
+    category_id: '', 
+    department: 'IT' 
+  });
+  const [selectedCategoryForSub, setSelectedCategoryForSub] = useState(null);
 
   // Inventory States
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -138,11 +147,13 @@ const JohnnyCMS = () => {
   const [newComplaint, setNewComplaint] = useState({
   department: 'IT',
   category: '',
+  sub_category: '',  // ADD THIS LINE
   comments: '',
   priority: 'Medium',
   assigned_to: '',
-  asset_tag: ''  // ADD THIS LINE
+  asset_tag: ''
   });
+
 
   const [filterData, setFilterData] = useState({
     startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -289,16 +300,17 @@ const [pettyCashFilter, setPettyCashFilter] = useState({
     if (isLoggedIn) {
       loadComplaints();
       loadCategories();
+      loadSubCategories();  // ADD THIS LINE
       loadInventory();
       loadSuppliers();
       loadStockMovements();
       loadInventoryCategories();
       loadWarehouses();
-      loadFeatures();  // ADD THIS
-      loadCurrentUserFeatures();  // ADD THIS
+      loadFeatures();
+      loadCurrentUserFeatures();
       if (currentUser?.role === 'admin') {
-      loadUsers();
-      loadPettyCash();
+        loadUsers();
+        loadPettyCash();
       }
     }
   }, [isLoggedIn, currentUser]);
@@ -430,6 +442,103 @@ const [pettyCashFilter, setPettyCashFilter] = useState({
       console.error('Error loading categories:', err);
     }
   };
+                          const loadSubCategories = async () => {
+                    try {
+                      const { data, error } = await supabase
+                        .from('sub_categories')
+                        .select(`
+                          *,
+                          categories (
+                            id,
+                            name,
+                            department
+                          )
+                        `)
+                        .order('department', { ascending: true })
+                        .order('name', { ascending: true });
+                      
+                      if (error) throw error;
+                      setAllSubCategories(data || []);
+                      setSubCategories(data || []);
+                    } catch (err) {
+                      console.error('Error loading sub-categories:', err);
+                    }
+                  };
+
+                  const getSubCategoriesByCategory = (categoryId) => {
+                    if (!categoryId) return [];
+                    return allSubCategories.filter(sub => sub.category_id === parseInt(categoryId));
+                  };
+
+                  const getSubCategoriesByCategoryName = (categoryName, department) => {
+                    const category = allCategories.find(c => c.name === categoryName && c.department === department);
+                    if (!category) return [];
+                    return allSubCategories.filter(sub => sub.category_id === category.id);
+                  };
+
+                  const handleAddSubCategory = async () => {
+                    if (!newSubCategory.name || !newSubCategory.category_id) {
+                      setError('Please fill in all required fields');
+                      return;
+                    }
+
+                    // Check if sub-category already exists for this category
+                    const exists = allSubCategories.some(
+                      sc => sc.name === newSubCategory.name && sc.category_id === parseInt(newSubCategory.category_id)
+                    );
+                    
+                    if (exists) {
+                      setError('Sub-category already exists under this category');
+                      return;
+                    }
+
+                    try {
+                      setLoading(true);
+                      setError('');
+                      
+                      const selectedCategory = allCategories.find(c => c.id === parseInt(newSubCategory.category_id));
+                      
+                      const { error } = await supabase
+                        .from('sub_categories')
+                        .insert([{ 
+                          name: newSubCategory.name, 
+                          category_id: parseInt(newSubCategory.category_id),
+                          department: selectedCategory?.department || newSubCategory.department,
+                          created_by: currentUser?.username
+                        }]);
+                      
+                      if (error) throw error;
+                      
+                      await loadSubCategories();
+                      setNewSubCategory({ name: '', category_id: '', department: 'IT' });
+                      setShowSubCategoryModal(false);
+                    } catch (err) {
+                      console.error('Error adding sub-category:', err);
+                      setError('Failed to add sub-category');
+                    } finally {
+                      setLoading(false);
+                    }
+                  };
+
+                  const handleDeleteSubCategory = async (subCategoryId) => {
+                    if (!window.confirm('Are you sure you want to delete this sub-category?')) return;
+
+                    try {
+                      setLoading(true);
+                      const { error } = await supabase
+                        .from('sub_categories')
+                        .delete()
+                        .eq('id', subCategoryId);
+                      
+                      if (error) throw error;
+                      await loadSubCategories();
+                    } catch (err) {
+                      console.error('Error deleting sub-category:', err);
+                      setError('Failed to delete sub-category');
+                    } finally {
+                      setLoading(false);
+                    }
+                  };
 
   const loadInventory = async () => {
     try {
@@ -1086,48 +1195,57 @@ const [pettyCashFilter, setPettyCashFilter] = useState({
     }
   };
 
-  const handleAddComplaint = async () => {
-  if (!newComplaint.category || !newComplaint.comments || !newComplaint.asset_tag) {
-    setError('Please fill in all required fields including Asset Tag');
-    return;
-  }
+      const handleAddComplaint = async () => {
+      if (!newComplaint.category || !newComplaint.comments || !newComplaint.asset_tag) {
+        setError('Please fill in all required fields including Asset Tag');
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError('');
-      
-      const complaintNumber = await generateComplaintNumber();
-      
-      const { error } = await supabase
-      .from('complaints')
-      .insert([{
-      complaint_number: complaintNumber,
-      department: newComplaint.department,
-      category: newComplaint.category,
-      comments: newComplaint.comments,
-      priority: newComplaint.priority,
-      status: 'Open',
-      branch: currentUser?.branch || 'Unknown',
-      assigned_to: newComplaint.assigned_to || null,
-      asset_tag: newComplaint.asset_tag,  // ADD THIS LINE
-      created_by: currentUser?.username || 'unknown'
-      }])
-      .select();
-      
-      if (error) throw error;
-      
-      await loadComplaints();
-      setNewComplaint({ department: 'IT', category: '', comments: '', priority: 'Medium', assigned_to: '', asset_tag: '' });
-      setCurrentView('complaints');
-      
-      alert(`Complaint created successfully!\nComplaint Number: ${complaintNumber}`);
-    } catch (err) {
-      console.error('Error adding complaint:', err);
-      setError('Failed to add complaint');
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        setLoading(true);
+        setError('');
+        
+        const complaintNumber = await generateComplaintNumber();
+        
+        const { error } = await supabase
+          .from('complaints')
+          .insert([{
+            complaint_number: complaintNumber,
+            department: newComplaint.department,
+            category: newComplaint.category,
+            sub_category: newComplaint.sub_category || null,  // ADD THIS LINE
+            comments: newComplaint.comments,
+            priority: newComplaint.priority,
+            status: 'Open',
+            branch: currentUser?.branch || 'Unknown',
+            assigned_to: newComplaint.assigned_to || null,
+            asset_tag: newComplaint.asset_tag,
+            created_by: currentUser?.username || 'unknown'
+          }])
+          .select();
+        
+        if (error) throw error;
+        
+        await loadComplaints();
+        setNewComplaint({ 
+          department: 'IT', 
+          category: '', 
+          sub_category: '',  // ADD THIS LINE
+          comments: '', 
+          priority: 'Medium', 
+          assigned_to: '',
+          asset_tag: ''
+        });
+        setCurrentView('complaints');
+        
+        alert(`Complaint created successfully!\nComplaint Number: ${complaintNumber}`);
+      } catch (err) {
+        console.error('Error adding complaint:', err);
+        setError('Failed to add complaint');
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const handleStatusChange = async (complaintId, newStatus) => {
     const currentComplaint = complaints.find(c => c.id === complaintId);
@@ -3265,15 +3383,24 @@ This report was generated from Johnny & Jugnu CMS.
                     </button>
                     
                     {currentUser?.role === 'admin' && (
-                      <button
-                        onClick={() => setShowCategoryModal(true)}
-                        className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
-                      >
-                        <Layers className="w-5 h-5 mr-2" />
-                        Complaint Categories
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setShowCategoryModal(true)}
+                          className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                        >
+                          <Layers className="w-5 h-5 mr-2" />
+                          Categories
+                        </button>
+                        
+                        <button
+                          onClick={() => setShowSubCategoryModal(true)}
+                          className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
+                        >
+                          <Layers className="w-5 h-5 mr-2" />
+                          Sub-Categories
+                        </button>
+                      </>
                     )}
-                  </div>
 
                   <div className="bg-white rounded-xl shadow-md p-6">
                     <div className="mb-6 flex gap-4">
@@ -3391,6 +3518,7 @@ This report was generated from Johnny & Jugnu CMS.
                               <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Priority</th>
                               <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Department</th>
                               <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Category</th>
+                              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Sub-Category</th>  {/* ADD THIS */}
                               <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Asset Tag</th>
                               <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Comments</th>
                               <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Status</th>
@@ -3432,11 +3560,20 @@ This report was generated from Johnny & Jugnu CMS.
                                   </td>
                                   <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.department}</td>
                                   <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.category}</td>
-                                  <td className="px-2 py-3 whitespace-nowrap">
-                                    <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
-                                      {complaint.asset_tag || 'N/A'}
-                                    </span>
-                                  </td>
+                                    <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">
+                                      {complaint.sub_category ? (
+                                        <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-semibold">
+                                          {complaint.sub_category}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-3 whitespace-nowrap">
+                                      <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                                        {complaint.asset_tag || 'N/A'}
+                                      </span>
+                                    </td>
                                   <td className="px-2 py-3 text-xs text-gray-700 max-w-xs truncate">{complaint.comments}</td>
                                   <td className="px-2 py-3 whitespace-nowrap">
                                     {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
@@ -3628,22 +3765,48 @@ This report was generated from Johnny & Jugnu CMS.
                     </select>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-                    <select
-                      value={newComplaint.category}
-                      onChange={(e) => setNewComplaint({...newComplaint, category: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                    >
-                      <option value="">Select Category</option>
-                      {getCategoriesByDepartment(newComplaint.department).map((cat) => (
-                        <option key={cat.id} value={cat.name}>{cat.name}</option>
-                      ))}
-                    </select>
-                    {getCategoriesByDepartment(newComplaint.department).length === 0 && (
-                      <p className="text-sm text-orange-600 mt-1">No categories available for this department</p>
-                    )}
-                  </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                          <select
+                            value={newComplaint.category}
+                            onChange={(e) => setNewComplaint({
+                              ...newComplaint, 
+                              category: e.target.value,
+                              sub_category: ''  // Reset sub-category when category changes
+                            })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                          >
+                            <option value="">Select Category</option>
+                            {getCategoriesByDepartment(newComplaint.department).map((cat) => (
+                              <option key={cat.id} value={cat.name}>{cat.name}</option>
+                            ))}
+                          </select>
+                          {getCategoriesByDepartment(newComplaint.department).length === 0 && (
+                            <p className="text-sm text-orange-600 mt-1">No categories available for this department</p>
+                          )}
+                        </div>
+
+                        {/* ADD SUB-CATEGORY FIELD */}
+                        {newComplaint.category && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Sub-Category {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).length > 0 && '*'}
+                            </label>
+                            <select
+                              value={newComplaint.sub_category}
+                              onChange={(e) => setNewComplaint({...newComplaint, sub_category: e.target.value})}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                            >
+                              <option value="">Select Sub-Category (Optional)</option>
+                              {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).map((subCat) => (
+                                <option key={subCat.id} value={subCat.name}>{subCat.name}</option>
+                              ))}
+                            </select>
+                            {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).length === 0 && (
+                              <p className="text-sm text-gray-500 mt-1">No sub-categories available for this category</p>
+                            )}
+                          </div>
+                        )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Asset Tag Number *
@@ -5878,6 +6041,242 @@ This report was generated from Johnny & Jugnu CMS.
                           </div>
                         </div>
                       )}
+                        {/* SUB-CATEGORY MODAL */}
+{showSubCategoryModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-gray-800">Manage Sub-Categories</h3>
+        <button
+          onClick={() => {
+            setShowSubCategoryModal(false);
+            setError('');
+          }}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Add New Sub-Category Form */}
+      <div className="bg-gray-50 p-6 rounded-lg mb-6">
+        <h4 className="text-sm font-semibold text-gray-700 mb-4">Add New Sub-Category</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Department *</label>
+            <select
+              value={newSubCategory.department}
+              onChange={(e) => setNewSubCategory({
+                ...newSubCategory, 
+                department: e.target.value,
+                category_id: ''
+              })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              disabled={loading}
+            >
+              <option value="IT">IT</option>
+              <option value="Operations">Operations</option>
+              <option value="Maintenance">Maintenance</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Parent Category *</label>
+            <select
+              value={newSubCategory.category_id}
+              onChange={(e) => setNewSubCategory({...newSubCategory, category_id: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+              disabled={loading}
+            >
+              <option value="">Select Category</option>
+              {allCategories
+                .filter(cat => cat.department === newSubCategory.department)
+                .map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))
+              }
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Sub-Category Name *</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newSubCategory.name}
+                onChange={(e) => setNewSubCategory({...newSubCategory, name: e.target.value})}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="Enter sub-category name"
+                disabled={loading}
+              />
+              <button
+                onClick={handleAddSubCategory}
+                disabled={loading}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 flex items-center"
+              >
+                {loading ? (
+                  <Loader className="animate-spin w-5 h-5" />
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader className="animate-spin w-8 h-8 text-indigo-500" />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* IT Sub-Categories */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+              <span className="bg-blue-500 text-white px-3 py-1 rounded-full mr-3">IT</span>
+              {allSubCategories.filter(sc => sc.department === 'IT').length} Sub-Categories
+            </h3>
+            
+            {/* Group by Category */}
+            {allCategories.filter(c => c.department === 'IT').map(category => {
+              const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
+              if (subCats.length === 0) return null;
+              
+              return (
+                <div key={category.id} className="mb-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <Tag className="w-4 h-4 text-blue-500 mr-2" />
+                    {category.name}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-6">
+                    {subCats.map((subCat) => (
+                      <div key={subCat.id} className="border border-blue-200 bg-blue-50 rounded-lg p-3 flex justify-between items-center hover:border-blue-300 transition">
+                        <div className="flex items-center">
+                          <Layers className="w-4 h-4 text-blue-600 mr-2" />
+                          <span className="text-sm text-gray-800">{subCat.name}</span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteSubCategory(subCat.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {allSubCategories.filter(sc => sc.department === 'IT').length === 0 && (
+              <p className="text-gray-500 text-center py-4">No sub-categories in IT department</p>
+            )}
+          </div>
+
+          {/* Operations Sub-Categories */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+              <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">Operations</span>
+              {allSubCategories.filter(sc => sc.department === 'Operations').length} Sub-Categories
+            </h3>
+            
+            {allCategories.filter(c => c.department === 'Operations').map(category => {
+              const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
+              if (subCats.length === 0) return null;
+              
+              return (
+                <div key={category.id} className="mb-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <Tag className="w-4 h-4 text-green-500 mr-2" />
+                    {category.name}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-6">
+                    {subCats.map((subCat) => (
+                      <div key={subCat.id} className="border border-green-200 bg-green-50 rounded-lg p-3 flex justify-between items-center hover:border-green-300 transition">
+                        <div className="flex items-center">
+                          <Layers className="w-4 h-4 text-green-600 mr-2" />
+                          <span className="text-sm text-gray-800">{subCat.name}</span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteSubCategory(subCat.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {allSubCategories.filter(sc => sc.department === 'Operations').length === 0 && (
+              <p className="text-gray-500 text-center py-4">No sub-categories in Operations department</p>
+            )}
+          </div>
+
+                    {/* Maintenance Sub-Categories */}
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                      <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Maintenance</span>
+                        {allSubCategories.filter(sc => sc.department === 'Maintenance').length} Sub-Categories
+                      </h3>
+                      
+                      {allCategories.filter(c => c.department === 'Maintenance').map(category => {
+                        const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
+                        if (subCats.length === 0) return null;
+                        
+                        return (
+                          <div key={category.id} className="mb-4">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                              <Tag className="w-4 h-4 text-purple-500 mr-2" />
+                              {category.name}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-6">
+                              {subCats.map((subCat) => (
+                                <div key={subCat.id} className="border border-purple-200 bg-purple-50 rounded-lg p-3 flex justify-between items-center hover:border-purple-300 transition">
+                                  <div className="flex items-center">
+                                    <Layers className="w-4 h-4 text-purple-600 mr-2" />
+                                    <span className="text-sm text-gray-800">{subCat.name}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteSubCategory(subCat.id)}
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {allSubCategories.filter(sc => sc.department === 'Maintenance').length === 0 && (
+                        <p className="text-gray-500 text-center py-4">No sub-categories in Maintenance department</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setShowSubCategoryModal(false);
+                      setError('');
+                    }}
+                    className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           
     </div>
   );
