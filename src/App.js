@@ -3747,8 +3747,6 @@ This report was generated from Johnny & Jugnu CMS.
       </button>
     </div>
     <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Maintenance Complaint</h2>
-
-            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl shadow-md p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaint Details</h3>
@@ -6288,8 +6286,6 @@ This report was generated from Johnny & Jugnu CMS.
               </div>
             </div>
           )}
-
-        </div> {/* This was missing - closes the main content div */}
       </main>
 
     </div>
