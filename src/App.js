@@ -3729,7 +3729,7 @@ This report was generated from Johnny & Jugnu CMS.
                     )}
                   </div> {/* Closes bg-white rounded-xl shadow-md p-6 */}
                 </div> 
-        {/* ADD NEW COMPLAINT */}
+                                    {/* ADD NEW COMPLAINT */}
         {currentView === 'add' && (
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4 mb-6">
