@@ -5951,344 +5951,341 @@ This report was generated from Johnny & Jugnu CMS.
           </div>
         </div>
       )} 
-                /* FEATURE MANAGEMENT MODAL */}
-                      {showFeatureModal && selectedUserForFeatures && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6">
-                            <div className="flex justify-between items-center mb-6">
-                              <div>
-                                <h3 className="text-xl font-bold text-gray-800">Manage Features</h3>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  User: <span className="font-semibold">{selectedUserForFeatures.username}</span> ({selectedUserForFeatures.role})
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  setShowFeatureModal(false);
-                                  setSelectedUserForFeatures(null);
-                                  setUserFeatures([]);
-                                }}
-                                className="text-gray-500 hover:text-gray-700"
-                              >
-                                <X className="w-6 h-6" />
-                              </button>
-                            </div>
-
-                            {selectedUserForFeatures.role === 'admin' && (
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                                <p className="text-sm text-blue-700">
-                                  <strong>Note:</strong> Admin users have access to all features by default.
-                                </p>
-                              </div>
-                            )}
-
-                            <div className="space-y-3">
-                              {features.map((feature) => {
-                                const userHasFeature = userFeatures.some(uf => uf.feature_id === feature.id);
-                                const isAdmin = selectedUserForFeatures.role === 'admin';
-                                
-                                return (
-                                  <div
-                                    key={feature.id}
-                                    className={`border rounded-lg p-4 flex items-center justify-between transition ${
-                                      userHasFeature || isAdmin ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                        userHasFeature || isAdmin ? 'bg-green-500' : 'bg-gray-300'
-                                      }`}>
-                                        {feature.icon === 'FileText' && <FileText className="w-5 h-5 text-white" />}
-                                        {feature.icon === 'Package' && <Package className="w-5 h-5 text-white" />}
-                                        {feature.icon === 'BarChart3' && <BarChart3 className="w-5 h-5 text-white" />}
-                                        {feature.icon === 'DollarSign' && <DollarSign className="w-5 h-5 text-white" />}
-                                      </div>
-                                      <div>
-                                        <h4 className="font-semibold text-gray-800">{feature.name}</h4>
-                                        <p className="text-sm text-gray-600">{feature.description}</p>
-                                      </div>
-                                    </div>
-                                    
-                                    <button
-                                      onClick={() => handleToggleUserFeature(selectedUserForFeatures.id, feature.id, userHasFeature)}
-                                      disabled={loading || isAdmin}
-                                      className={`px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                                        userHasFeature || isAdmin
-                                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                          : 'bg-green-100 text-green-700 hover:bg-green-200'
-                                      }`}
-                                    >
-                                      {loading ? (
-                                        <Loader className="animate-spin w-4 h-4" />
-                                      ) : userHasFeature || isAdmin ? (
-                                        'Revoke'
-                                      ) : (
-                                        'Grant'
-                                      )}
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            <div className="mt-6 flex justify-end">
-                              <button
-                                onClick={() => {
-                                  setShowFeatureModal(false);
-                                  setSelectedUserForFeatures(null);
-                                  setUserFeatures([]);
-                                  // Reload current user features if editing own features
-                                  if (selectedUserForFeatures.id === currentUser?.id) {
-                                    loadCurrentUserFeatures();
-                                  }
-                                }}
-                                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                              >
-                                Close
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                        {/* SUB-CATEGORY MODAL */}
-            {showSubCategoryModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-800">Manage Sub-Categories</h3>
-                    <button
-                      onClick={() => {
-                        setShowSubCategoryModal(false);
-                        setError('');
-                      }}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
-
-              {/* Add New Sub-Category Form */}
-              <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                <h4 className="text-sm font-semibold text-gray-700 mb-4">Add New Sub-Category</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Department *</label>
-                    <select
-                      value={newSubCategory.department}
-                      onChange={(e) => setNewSubCategory({
-                        ...newSubCategory, 
-                        department: e.target.value,
-                        category_id: ''
-                      })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                      disabled={loading}
-                    >
-                      <option value="IT">IT</option>
-                      <option value="Operations">Operations</option>
-                      <option value="Maintenance">Maintenance</option>
-                    </select>
-                  </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Parent Category *</label>
-              <select
-                value={newSubCategory.category_id}
-                onChange={(e) => setNewSubCategory({...newSubCategory, category_id: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                disabled={loading}
+                      {/* FEATURE MANAGEMENT MODAL */}
+      {showFeatureModal && selectedUserForFeatures && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Manage Features</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  User: <span className="font-semibold">{selectedUserForFeatures.username}</span> ({selectedUserForFeatures.role})
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowFeatureModal(false);
+                  setSelectedUserForFeatures(null);
+                  setUserFeatures([]);
+                }}
+                className="text-gray-500 hover:text-gray-700"
               >
-                <option value="">Select Category</option>
-                {allCategories
-                  .filter(cat => cat.department === newSubCategory.department)
-                  .map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))
-                }
-              </select>
+                <X className="w-6 h-6" />
+              </button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Sub-Category Name *</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newSubCategory.name}
-                onChange={(e) => setNewSubCategory({...newSubCategory, name: e.target.value})}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                placeholder="Enter sub-category name"
-                disabled={loading}
-              />
+            {selectedUserForFeatures.role === 'admin' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-700">
+                  <strong>Note:</strong> Admin users have access to all features by default.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {features.map((feature) => {
+                const userHasFeature = userFeatures.some(uf => uf.feature_id === feature.id);
+                const isAdmin = selectedUserForFeatures.role === 'admin';
+                
+                return (
+                  <div
+                    key={feature.id}
+                    className={`border rounded-lg p-4 flex items-center justify-between transition ${
+                      userHasFeature || isAdmin ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        userHasFeature || isAdmin ? 'bg-green-500' : 'bg-gray-300'
+                      }`}>
+                        {feature.icon === 'FileText' && <FileText className="w-5 h-5 text-white" />}
+                        {feature.icon === 'Package' && <Package className="w-5 h-5 text-white" />}
+                        {feature.icon === 'BarChart3' && <BarChart3 className="w-5 h-5 text-white" />}
+                        {feature.icon === 'DollarSign' && <DollarSign className="w-5 h-5 text-white" />}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-800">{feature.name}</h4>
+                        <p className="text-sm text-gray-600">{feature.description}</p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => handleToggleUserFeature(selectedUserForFeatures.id, feature.id, userHasFeature)}
+                      disabled={loading || isAdmin}
+                      className={`px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                        userHasFeature || isAdmin
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                    >
+                      {loading ? (
+                        <Loader className="animate-spin w-4 h-4" />
+                      ) : userHasFeature || isAdmin ? (
+                        'Revoke'
+                      ) : (
+                        'Grant'
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 flex justify-end">
               <button
-                onClick={handleAddSubCategory}
-                disabled={loading}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 flex items-center"
+                onClick={() => {
+                  setShowFeatureModal(false);
+                  setSelectedUserForFeatures(null);
+                  setUserFeatures([]);
+                  if (selectedUserForFeatures.id === currentUser?.id) {
+                    loadCurrentUserFeatures();
+                  }
+                }}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
               >
-                {loading ? (
-                  <Loader className="animate-spin w-5 h-5" />
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add
-                  </>
-                )}
-                </button>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-CATEGORY MODAL */}
+      {showSubCategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Manage Sub-Categories</h3>
+              <button
+                onClick={() => {
+                  setShowSubCategoryModal(false);
+                  setError('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-lg mb-6">
+              <h4 className="text-sm font-semibold text-gray-700 mb-4">Add New Sub-Category</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Department *</label>
+                  <select
+                    value={newSubCategory.department}
+                    onChange={(e) => setNewSubCategory({
+                      ...newSubCategory, 
+                      department: e.target.value,
+                      category_id: ''
+                    })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    disabled={loading}
+                  >
+                    <option value="IT">IT</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Maintenance">Maintenance</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Parent Category *</label>
+                  <select
+                    value={newSubCategory.category_id}
+                    onChange={(e) => setNewSubCategory({...newSubCategory, category_id: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    disabled={loading}
+                  >
+                    <option value="">Select Category</option>
+                    {allCategories
+                      .filter(cat => cat.department === newSubCategory.department)
+                      .map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))
+                    }
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sub-Category Name *</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newSubCategory.name}
+                      onChange={(e) => setNewSubCategory({...newSubCategory, name: e.target.value})}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="Enter sub-category name"
+                      disabled={loading}
+                    />
+                    <button
+                      onClick={handleAddSubCategory}
+                      disabled={loading}
+                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 flex items-center"
+                    >
+                      {loading ? (
+                        <Loader className="animate-spin w-5 h-5" />
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          </div>
 
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <Loader className="animate-spin w-8 h-8 text-indigo-500" />
-            </div>
-          ) : (
-            <div className="space-y-6">
-          {/* IT Sub-Categories */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-              <span className="bg-blue-500 text-white px-3 py-1 rounded-full mr-3">IT</span>
-              {allSubCategories.filter(sc => sc.department === 'IT').length} Sub-Categories
-            </h3>
-            
-            {/* Group by Category */}
-            {allCategories.filter(c => c.department === 'IT').map(category => {
-              const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
-              if (subCats.length === 0) return null;
-              
-              return (
-                <div key={category.id} className="mb-4">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <Tag className="w-4 h-4 text-blue-500 mr-2" />
-                    {category.name}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-6">
-                    {subCats.map((subCat) => (
-                      <div key={subCat.id} className="border border-blue-200 bg-blue-50 rounded-lg p-3 flex justify-between items-center hover:border-blue-300 transition">
-                        <div className="flex items-center">
-                          <Layers className="w-4 h-4 text-blue-600 mr-2" />
-                          <span className="text-sm text-gray-800">{subCat.name}</span>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteSubCategory(subCat.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-            
-            {allSubCategories.filter(sc => sc.department === 'IT').length === 0 && (
-              <p className="text-gray-500 text-center py-4">No sub-categories in IT department</p>
-            )}
-          </div>
-
-          {/* Operations Sub-Categories */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-              <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">Operations</span>
-              {allSubCategories.filter(sc => sc.department === 'Operations').length} Sub-Categories
-            </h3>
-            
-            {allCategories.filter(c => c.department === 'Operations').map(category => {
-              const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
-              if (subCats.length === 0) return null;
-              
-              return (
-                <div key={category.id} className="mb-4">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <Tag className="w-4 h-4 text-green-500 mr-2" />
-                    {category.name}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-6">
-                    {subCats.map((subCat) => (
-                      <div key={subCat.id} className="border border-green-200 bg-green-50 rounded-lg p-3 flex justify-between items-center hover:border-green-300 transition">
-                        <div className="flex items-center">
-                          <Layers className="w-4 h-4 text-green-600 mr-2" />
-                          <span className="text-sm text-gray-800">{subCat.name}</span>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteSubCategory(subCat.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-            
-            {allSubCategories.filter(sc => sc.department === 'Operations').length === 0 && (
-              <p className="text-gray-500 text-center py-4">No sub-categories in Operations department</p>
-            )}
-          </div>
-
-                    {/* Maintenance Sub-Categories */}
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                      <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Maintenance</span>
-                        {allSubCategories.filter(sc => sc.department === 'Maintenance').length} Sub-Categories
-                      </h3>
-                      
-                      {allCategories.filter(c => c.department === 'Maintenance').map(category => {
-                        const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
-                        if (subCats.length === 0) return null;
-                        
-                        return (
-                          <div key={category.id} className="mb-4">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                              <Tag className="w-4 h-4 text-purple-500 mr-2" />
-                              {category.name}
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-6">
-                              {subCats.map((subCat) => (
-                                <div key={subCat.id} className="border border-purple-200 bg-purple-50 rounded-lg p-3 flex justify-between items-center hover:border-purple-300 transition">
-                                  <div className="flex items-center">
-                                    <Layers className="w-4 h-4 text-purple-600 mr-2" />
-                                    <span className="text-sm text-gray-800">{subCat.name}</span>
-                                  </div>
-                                  <button
-                                    onClick={() => handleDeleteSubCategory(subCat.id)}
-                                    className="text-red-600 hover:text-red-800"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              ))}
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader className="animate-spin w-8 h-8 text-indigo-500" />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* IT Sub-Categories */}
+                <div className="bg-white rounded-xl shadow-md p-6">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-blue-500 text-white px-3 py-1 rounded-full mr-3">IT</span>
+                    {allSubCategories.filter(sc => sc.department === 'IT').length} Sub-Categories
+                  </h3>
+                  
+                  {allCategories.filter(c => c.department === 'IT').map(category => {
+                    const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
+                    if (subCats.length === 0) return null;
+                    
+                    return (
+                      <div key={category.id} className="mb-4">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                          <Tag className="w-4 h-4 text-blue-500 mr-2" />
+                          {category.name}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-6">
+                          {subCats.map((subCat) => (
+                            <div key={subCat.id} className="border border-blue-200 bg-blue-50 rounded-lg p-3 flex justify-between items-center hover:border-blue-300 transition">
+                              <div className="flex items-center">
+                                <Layers className="w-4 h-4 text-blue-600 mr-2" />
+                                <span className="text-sm text-gray-800">{subCat.name}</span>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteSubCategory(subCat.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
-                          </div>
-                        );
-                      })}
-                      
-                      {allSubCategories.filter(sc => sc.department === 'Maintenance').length === 0 && (
-                        <p className="text-gray-500 text-center py-4">No sub-categories in Maintenance department</p>
-                      )}
-                                        </div>
-                  </div>
-                )}
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  {allSubCategories.filter(sc => sc.department === 'IT').length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No sub-categories in IT department</p>
+                  )}
+                </div>
 
-                <div className="mt-6 flex justify-end">        // ← OPENS HERE
-                    <button
-                      onClick={() => {
-                        setShowSubCategoryModal(false);
-                        setError('');
-                      }}
-                      className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                    >
-                      Close
-                    </button>
-                  </div>                                         // ← CLOSES HERE
-                </div>                                           // ← Closes modal content
-              </div>                                             // ← Closes modal wrapper
-            )}                                                   // ← Closes showSubCategoryModal
-          </main>
+                {/* Operations Sub-Categories */}
+                <div className="bg-white rounded-xl shadow-md p-6">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">Operations</span>
+                    {allSubCategories.filter(sc => sc.department === 'Operations').length} Sub-Categories
+                  </h3>
+                  
+                  {allCategories.filter(c => c.department === 'Operations').map(category => {
+                    const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
+                    if (subCats.length === 0) return null;
+                    
+                    return (
+                      <div key={category.id} className="mb-4">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                          <Tag className="w-4 h-4 text-green-500 mr-2" />
+                          {category.name}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-6">
+                          {subCats.map((subCat) => (
+                            <div key={subCat.id} className="border border-green-200 bg-green-50 rounded-lg p-3 flex justify-between items-center hover:border-green-300 transition">
+                              <div className="flex items-center">
+                                <Layers className="w-4 h-4 text-green-600 mr-2" />
+                                <span className="text-sm text-gray-800">{subCat.name}</span>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteSubCategory(subCat.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  {allSubCategories.filter(sc => sc.department === 'Operations').length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No sub-categories in Operations department</p>
+                  )}
+                </div>
+
+                {/* Maintenance Sub-Categories */}
+                <div className="bg-white rounded-xl shadow-md p-6">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Maintenance</span>
+                    {allSubCategories.filter(sc => sc.department === 'Maintenance').length} Sub-Categories
+                  </h3>
+                  
+                  {allCategories.filter(c => c.department === 'Maintenance').map(category => {
+                    const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
+                    if (subCats.length === 0) return null;
+                    
+                    return (
+                      <div key={category.id} className="mb-4">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                          <Tag className="w-4 h-4 text-purple-500 mr-2" />
+                          {category.name}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-6">
+                          {subCats.map((subCat) => (
+                            <div key={subCat.id} className="border border-purple-200 bg-purple-50 rounded-lg p-3 flex justify-between items-center hover:border-purple-300 transition">
+                              <div className="flex items-center">
+                                <Layers className="w-4 h-4 text-purple-600 mr-2" />
+                                <span className="text-sm text-gray-800">{subCat.name}</span>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteSubCategory(subCat.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  {allSubCategories.filter(sc => sc.department === 'Maintenance').length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No sub-categories in Maintenance department</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowSubCategoryModal(false);
+                  setError('');
+                }}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
-      );
-    };
-    
-    export default JohnnyCMS;
+      )}
+    </div>
+  );
+};
+
+export default JohnnyCMS;
