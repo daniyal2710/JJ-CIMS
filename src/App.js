@@ -3728,7 +3728,6 @@ This report was generated from Johnny & Jugnu CMS.
                       </div>  {/* Closes overflow-x-auto w-full */}
                     )}
                   </div>  {/* Closes bg-white rounded-xl shadow-md p-6 */}
-                </div>     {/* Closes the main complaints container div */}
               )}           {/* Closes currentView === 'complaints' */}
 
 
