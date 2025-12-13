@@ -3728,8 +3728,7 @@ This report was generated from Johnny & Jugnu CMS.
                       </div>
                     )}
                   </div> {/* Closes bg-white rounded-xl shadow-md p-6 */}
-                </div> {/* This should close the main complaints container */}
-              )}
+                </div> 
         {/* ADD NEW COMPLAINT */}
         {currentView === 'add' && (
           <div className="max-w-4xl mx-auto">
