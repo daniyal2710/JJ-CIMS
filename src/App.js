@@ -2156,503 +2156,503 @@ This report was generated from Johnny & Jugnu CMS.
             </div>
           </div>
         )}
-         {/* COMPLAINTS DASHBOARD */}
-{currentView === 'complaints' && (
-  <div className="w-full">
-    <div className="mb-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-2">
-        {(currentUser?.role === 'admin' || currentUser?.role === 'support')
-          ? 'Complaint Management - All Branches' 
-          : `Complaint Management - ${currentUser?.branch}`
-        }
-      </h2>
-      {currentUser?.role !== 'admin' && currentUser?.role !== 'support' && (
-        <p className="text-sm text-gray-600 mb-6">Viewing complaints for your branch only</p>
-      )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Total</p>
-              <p className="text-3xl font-bold text-gray-800">{complaints.length}</p>
-            </div>
-            <FileText className="w-10 h-10 text-orange-500" />
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-red-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">High Priority</p>
-              <p className="text-3xl font-bold text-gray-800">
-                {complaints.filter(c => c.priority === 'High').length}
-              </p>
-            </div>
-            <AlertTriangle className="w-10 h-10 text-red-500" />
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-yellow-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Open</p>
-              <p className="text-3xl font-bold text-gray-800">
-                {complaints.filter(c => c.status === 'Open').length}
-              </p>
-            </div>
-            <Clock className="w-10 h-10 text-yellow-500" />
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Pending</p>
-              <p className="text-3xl font-bold text-gray-800">
-                {complaints.filter(c => c.status === 'Pending').length}
-              </p>
-            </div>
-            <AlertCircle className="w-10 h-10 text-blue-500" />
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Resolved</p>
-              <p className="text-3xl font-bold text-gray-800">
-                {complaints.filter(c => c.status === 'Resolved').length}
-              </p>
-            </div>
-            <CheckCircle className="w-10 h-10 text-green-500" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* Action Buttons */}
-    <div className="flex gap-3 mb-6">
-      <button
-        onClick={() => {
-          setNewComplaint({
-            department: 'IT',
-            category: '',
-            sub_category: '',
-            comments: '',
-            priority: 'Medium',
-            assigned_to: '',
-            asset_tag: ''
-          });
-          setCurrentView('add');
-        }}
-        className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md flex items-center"
-      >
-        <Plus className="w-5 h-5 mr-2" />
-        Add New
-      </button>
-      
-      {currentUser?.role === 'admin' && (
-        <>
-          <button
-            onClick={() => setShowCategoryModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
-          >
-            <Layers className="w-5 h-5 mr-2" />
-            Categories
-          </button>
-          
-          <button
-            onClick={() => setShowSubCategoryModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
-          >
-            <Layers className="w-5 h-5 mr-2" />
-            Sub-Categories
-          </button>
-        </>
-      )}
-    </div>
-
-    {/* Search and Table Container */}
-<div className="bg-white rounded-xl shadow-md p-6">
-  {/* Row 1: Complaint Number Search + Branch Filter */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-    {/* Complaint Number Search */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        <Hash className="inline w-4 h-4 mr-1" />
-        Search by Complaint Number
-      </label>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={searchComplaintNumber}
-          onChange={(e) => setSearchComplaintNumber(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && searchByComplaintNumber()}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-          placeholder="Enter complaint number (e.g., JJ-20251111-0001)"
-        />
-        <button
-          onClick={searchByComplaintNumber}
-          className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
-        >
-          <Search className="inline-block w-4 h-4 mr-2" />
-          Search
-        </button>
-        {searchComplaintNumber && (
-          <button
-            onClick={() => {
-              setSearchComplaintNumber('');
-              setBranchFilter('all');
-              loadComplaints();
-            }}
-            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
-          >
-            Clear
-          </button>
-        )}
-      </div>
-    </div>
-
-    {/* Branch Filter - Only for Admin/Support */}
-    {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          <Archive className="inline w-4 h-4 mr-1" />
-          Filter by Branch
-        </label>
-        <select
-          value={branchFilter}
-          onChange={(e) => {
-            setBranchFilter(e.target.value);
-            filterComplaintsByBranch(e.target.value);
-          }}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-        >
-          <option value="all">All Branches ({complaints.length})</option>
-          {[...new Set(complaints.map(c => c.branch))].sort().map(branch => {
-            const count = complaints.filter(c => c.branch === branch).length;
-            return (
-              <option key={branch} value={branch}>
-                {branch} ({count})
-              </option>
-            );
-          })}
-        </select>
-      </div>
-    )}
-  </div>
-
-  {/* Row 2: Date, Status, Priority Filters */}
-  <div className="flex flex-col md:flex-row gap-4 mb-6">
-    <div className="flex-1">
-      <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-      <input
-        type="date"
-        value={filterData.startDate}
-        onChange={(e) => setFilterData({...filterData, startDate: e.target.value})}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-      />
-    </div>
-    
-    <div className="flex-1">
-      <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-      <input
-        type="date"
-        value={filterData.endDate}
-        onChange={(e) => setFilterData({...filterData, endDate: e.target.value})}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-      />
-    </div>
-    
-    <div className="flex-1">
-      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-      <select
-        value={filterData.status}
-        onChange={(e) => setFilterData({...filterData, status: e.target.value})}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-      >
-        <option value="all">All Status</option>
-        <option value="open">Open</option>
-        <option value="pending">Pending</option>
-        <option value="parking">Parking</option>
-        <option value="resolved">Resolved</option>
-      </select>
-    </div>
-
-    <div className="flex-1">
-      <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-      <select
-        value={filterData.priority}
-        onChange={(e) => setFilterData({...filterData, priority: e.target.value})}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-      >
-        <option value="all">All Priorities</option>
-        <option value="High">High</option>
-        <option value="Medium">Medium</option>
-        <option value="Low">Low</option>
-      </select>
-    </div>
-    
-    <div className="flex items-end">
-      <button 
-        onClick={() => {
-          setBranchFilter('all');
-          setSearchComplaintNumber('');
-          loadComplaints();
-        }}
-        className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
-      >
-        <Search className="inline-block w-4 h-4 mr-2" />
-        Refresh
-      </button>
-    </div>
-  </div>
-
-  {loading ? (
-    <div className="flex justify-center items-center py-12">
-      <Loader className="animate-spin w-8 h-8 text-orange-500" />
-    </div>
-  ) : (
-    <div className="overflow-x-auto w-full">
-      <table className="w-full min-w-max">
-        <thead>
-          <tr className="bg-gray-50 border-b">
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
-              <Hash className="inline w-4 h-4 mr-1" />
-              Complaint #
-            </th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Date</th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Priority</th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Department</th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Category</th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Sub-Category</th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Asset Tag</th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Comments</th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Status</th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Assigned To</th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Branch</th>
-            {currentUser?.role === 'admin' && (
-              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Created By</th>
-            )}
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredComplaints.map((complaint) => (
-            <React.Fragment key={complaint.id}>
-              <tr className="border-b hover:bg-gray-50 transition">
-                <td className="px-2 py-3 whitespace-nowrap">
-                  <span className="text-xs font-mono font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                    {complaint.complaint_number}
-                  </span>
-                </td>
-                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.date}</td>
-                <td className="px-2 py-3 whitespace-nowrap">
-                  {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
-                    <select
-                      value={complaint.priority}
-                      onChange={(e) => handlePriorityChange(complaint.id, e.target.value)}
-                      className={`px-2 py-1 rounded-full text-xs font-semibold outline-none cursor-pointer border ${getPriorityBadge(complaint.priority)}`}
-                    >
-                      {priorityOptions.map(priority => (
-                        <option key={priority} value={priority}>{priority}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getPriorityBadge(complaint.priority)}`}>
-                      {getPriorityIcon(complaint.priority)}
-                      {complaint.priority}
-                    </span>
+                    {/* COMPLAINTS DASHBOARD */}
+            {currentView === 'complaints' && (
+              <div className="w-full">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                    {(currentUser?.role === 'admin' || currentUser?.role === 'support')
+                      ? 'Complaint Management - All Branches' 
+                      : `Complaint Management - ${currentUser?.branch}`
+                    }
+                  </h2>
+                  {currentUser?.role !== 'admin' && currentUser?.role !== 'support' && (
+                    <p className="text-sm text-gray-600 mb-6">Viewing complaints for your branch only</p>
                   )}
-                </td>
-                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.department}</td>
-                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.category}</td>
-                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">
-                  {complaint.sub_category ? (
-                    <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-semibold">
-                      {complaint.sub_category}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
-                <td className="px-2 py-3 whitespace-nowrap">
-                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
-                    {complaint.asset_tag || 'N/A'}
-                  </span>
-                </td>
-                <td className="px-2 py-3 text-xs text-gray-700 max-w-xs truncate">{complaint.comments}</td>
-                <td className="px-2 py-3 whitespace-nowrap">
-                  {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
-                    <select
-                      value={complaint.status}
-                      onChange={(e) => handleStatusChange(complaint.id, e.target.value)}
-                      className={`px-2 py-1 rounded-full text-xs font-semibold outline-none cursor-pointer ${
-                        complaint.status === 'Open' ? 'bg-yellow-100 text-yellow-700' :
-                        complaint.status === 'Pending' ? 'bg-blue-100 text-blue-700' :
-                        complaint.status === 'Parking' ? 'bg-purple-100 text-purple-700' :
-                        'bg-green-100 text-green-700'
-                      }`}
-                    >
-                      {statusOptions.map(status => (
-                        <option key={status} value={status}>{status}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      complaint.status === 'Open' ? 'bg-yellow-100 text-yellow-700' :
-                      complaint.status === 'Pending' ? 'bg-blue-100 text-blue-700' :
-                      complaint.status === 'Parking' ? 'bg-purple-100 text-purple-700' :
-                      'bg-green-100 text-green-700'
-                    }`}>
-                      {complaint.status}
-                    </span>
-                  )}
-                </td>
-                <td className="px-2 py-3 whitespace-nowrap">
-                  {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
-                    <select
-                      value={complaint.assigned_to || ''}
-                      onChange={(e) => handleAssignmentChange(complaint.id, e.target.value)}
-                      className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white"
-                    >
-                      <option value="">Unassigned</option>
-                      {users.filter(u => u.role === 'support' || u.role === 'admin').map((user) => (
-                        <option key={user.id} value={user.username}>
-                          {user.username}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="text-xs text-gray-700">
-                      {complaint.assigned_to ? (
-                        <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold whitespace-nowrap">
-                          👤 {complaint.assigned_to}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 text-xs">Unassigned</span>
-                      )}
-                    </span>
-                  )}
-                </td>
-                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.branch}</td>
-                {currentUser?.role === 'admin' && (
-                  <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.created_by}</td>
-                )}
-                <td className="px-2 py-3 whitespace-nowrap">
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                    <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-orange-500">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm">Total</p>
+                          <p className="text-3xl font-bold text-gray-800">{complaints.length}</p>
+                        </div>
+                        <FileText className="w-10 h-10 text-orange-500" />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-red-500">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm">High Priority</p>
+                          <p className="text-3xl font-bold text-gray-800">
+                            {complaints.filter(c => c.priority === 'High').length}
+                          </p>
+                        </div>
+                        <AlertTriangle className="w-10 h-10 text-red-500" />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-yellow-500">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm">Open</p>
+                          <p className="text-3xl font-bold text-gray-800">
+                            {complaints.filter(c => c.status === 'Open').length}
+                          </p>
+                        </div>
+                        <Clock className="w-10 h-10 text-yellow-500" />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm">Pending</p>
+                          <p className="text-3xl font-bold text-gray-800">
+                            {complaints.filter(c => c.status === 'Pending').length}
+                          </p>
+                        </div>
+                        <AlertCircle className="w-10 h-10 text-blue-500" />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm">Resolved</p>
+                          <p className="text-3xl font-bold text-gray-800">
+                            {complaints.filter(c => c.status === 'Resolved').length}
+                          </p>
+                        </div>
+                        <CheckCircle className="w-10 h-10 text-green-500" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 mb-6">
                   <button
-                    onClick={() => setExpandedComplaint(expandedComplaint === complaint.id ? null : complaint.id)}
-                    className="text-blue-600 hover:text-blue-800 font-semibold text-xs flex items-center gap-1"
+                    onClick={() => {
+                      setNewComplaint({
+                        department: 'IT',
+                        category: '',
+                        sub_category: '',
+                        comments: '',
+                        priority: 'Medium',
+                        assigned_to: '',
+                        asset_tag: ''
+                      });
+                      setCurrentView('add');
+                    }}
+                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md flex items-center"
                   >
-                    {expandedComplaint === complaint.id ? '▼ Hide' : '▶ View'}
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add New
                   </button>
-                </td>
-              </tr>
-              
-              {/* Expandable Details Row */}
-              {expandedComplaint === complaint.id && (
-                <tr className="bg-gray-50">
-                  <td colSpan={currentUser?.role === 'admin' ? 13 : 12} className="px-2 py-4">
-                    <div className="bg-white rounded-lg p-4 shadow-inner">
-                      <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
-                        <FileText className="w-4 h-4 mr-2" />
-                        Additional Details
-                      </h4>
+                  
+                  {currentUser?.role === 'admin' && (
+                    <>
+                      <button
+                        onClick={() => setShowCategoryModal(true)}
+                        className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                      >
+                        <Layers className="w-5 h-5 mr-2" />
+                        Categories
+                      </button>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Status Remarks (for Pending/Parking) */}
-                        {complaint.status_remarks && (complaint.status === 'Pending' || complaint.status === 'Parking') && (
-                          <div className="col-span-2">
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                              <p className="text-xs font-semibold text-blue-700 mb-1">Status Remarks ({complaint.status})</p>
-                              <p className="text-sm text-gray-700">{complaint.status_remarks}</p>
-                              {complaint.updated_by && (
-                                <p className="text-xs text-gray-500 mt-2">
-                                  Updated by: {complaint.updated_by} 
-                                  {complaint.updated_at && ` on ${new Date(complaint.updated_at).toLocaleString()}`}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* RCA Details (for Resolved) */}
-                        {complaint.status === 'Resolved' && (
-                          <>
-                            {complaint.rca && (
-                              <div>
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                  <p className="text-xs font-semibold text-green-700 mb-1">Root Cause Analysis</p>
-                                  <p className="text-sm font-semibold text-gray-800">{complaint.rca}</p>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {complaint.resolution_remarks && (
-                              <div>
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                  <p className="text-xs font-semibold text-green-700 mb-1">Resolution Remarks</p>
-                                  <p className="text-sm text-gray-700">{complaint.resolution_remarks}</p>
-                                </div>
-                              </div>
-                            )}
-                            
-                            <div>
-                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                <p className="text-xs font-semibold text-gray-600 mb-1">Resolved By</p>
-                                <p className="text-sm text-gray-800">
-                                  {complaint.resolved_by || 'N/A'}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                <p className="text-xs font-semibold text-gray-600 mb-1">Resolved At</p>
-                                <p className="text-sm text-gray-800">
-                                  {complaint.resolved_at ? new Date(complaint.resolved_at).toLocaleString() : 'N/A'}
-                                </p>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                        
-                        {/* Show message if no additional details */}
-                        {!complaint.status_remarks && complaint.status !== 'Resolved' && (
-                          <div className="col-span-2">
-                            <p className="text-sm text-gray-500 italic">No additional details available for this complaint.</p>
-                          </div>
+                      <button
+                        onClick={() => setShowSubCategoryModal(true)}
+                        className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
+                      >
+                        <Layers className="w-5 h-5 mr-2" />
+                        Sub-Categories
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                    {/* Search and Table Container */}
+                <div className="bg-white rounded-xl shadow-md p-6">
+                  {/* Row 1: Complaint Number Search + Branch Filter */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {/* Complaint Number Search */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Hash className="inline w-4 h-4 mr-1" />
+                        Search by Complaint Number
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={searchComplaintNumber}
+                          onChange={(e) => setSearchComplaintNumber(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && searchByComplaintNumber()}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                          placeholder="Enter complaint number (e.g., JJ-20251111-0001)"
+                        />
+                        <button
+                          onClick={searchByComplaintNumber}
+                          className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
+                        >
+                          <Search className="inline-block w-4 h-4 mr-2" />
+                          Search
+                        </button>
+                        {searchComplaintNumber && (
+                          <button
+                            onClick={() => {
+                              setSearchComplaintNumber('');
+                              setBranchFilter('all');
+                              loadComplaints();
+                            }}
+                            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+                          >
+                            Clear
+                          </button>
                         )}
                       </div>
                     </div>
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )}
+
+                    {/* Branch Filter - Only for Admin/Support */}
+                    {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Archive className="inline w-4 h-4 mr-1" />
+                          Filter by Branch
+                        </label>
+                        <select
+                          value={branchFilter}
+                          onChange={(e) => {
+                            setBranchFilter(e.target.value);
+                            filterComplaintsByBranch(e.target.value);
+                          }}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                        >
+                          <option value="all">All Branches ({complaints.length})</option>
+                          {[...new Set(complaints.map(c => c.branch))].sort().map(branch => {
+                            const count = complaints.filter(c => c.branch === branch).length;
+                            return (
+                              <option key={branch} value={branch}>
+                                {branch} ({count})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Row 2: Date, Status, Priority Filters */}
+                  <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                      <input
+                        type="date"
+                        value={filterData.startDate}
+                        onChange={(e) => setFilterData({...filterData, startDate: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                      />
+                    </div>
+                    
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                      <input
+                        type="date"
+                        value={filterData.endDate}
+                        onChange={(e) => setFilterData({...filterData, endDate: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                      />
+                    </div>
+                    
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                      <select
+                        value={filterData.status}
+                        onChange={(e) => setFilterData({...filterData, status: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="open">Open</option>
+                        <option value="pending">Pending</option>
+                        <option value="parking">Parking</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+                    </div>
+
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                      <select
+                        value={filterData.priority}
+                        onChange={(e) => setFilterData({...filterData, priority: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                      >
+                        <option value="all">All Priorities</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                      </select>
+                    </div>
+                    
+                    <div className="flex items-end">
+                      <button 
+                        onClick={() => {
+                          setBranchFilter('all');
+                          setSearchComplaintNumber('');
+                          loadComplaints();
+                        }}
+                        className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
+                      >
+                        <Search className="inline-block w-4 h-4 mr-2" />
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
+
+                  {loading ? (
+                    <div className="flex justify-center items-center py-12">
+                      <Loader className="animate-spin w-8 h-8 text-orange-500" />
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto w-full">
+                      <table className="w-full min-w-max">
+                        <thead>
+                          <tr className="bg-gray-50 border-b">
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+                              <Hash className="inline w-4 h-4 mr-1" />
+                              Complaint #
+                            </th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Date</th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Priority</th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Department</th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Category</th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Sub-Category</th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Asset Tag</th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Comments</th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Status</th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Assigned To</th>
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Branch</th>
+                            {currentUser?.role === 'admin' && (
+                              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Created By</th>
+                            )}
+                            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredComplaints.map((complaint) => (
+                            <React.Fragment key={complaint.id}>
+                              <tr className="border-b hover:bg-gray-50 transition">
+                                <td className="px-2 py-3 whitespace-nowrap">
+                                  <span className="text-xs font-mono font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                                    {complaint.complaint_number}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.date}</td>
+                                <td className="px-2 py-3 whitespace-nowrap">
+                                  {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
+                                    <select
+                                      value={complaint.priority}
+                                      onChange={(e) => handlePriorityChange(complaint.id, e.target.value)}
+                                      className={`px-2 py-1 rounded-full text-xs font-semibold outline-none cursor-pointer border ${getPriorityBadge(complaint.priority)}`}
+                                    >
+                                      {priorityOptions.map(priority => (
+                                        <option key={priority} value={priority}>{priority}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getPriorityBadge(complaint.priority)}`}>
+                                      {getPriorityIcon(complaint.priority)}
+                                      {complaint.priority}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.department}</td>
+                                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.category}</td>
+                                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">
+                                  {complaint.sub_category ? (
+                                    <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-semibold">
+                                      {complaint.sub_category}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
+                                <td className="px-2 py-3 whitespace-nowrap">
+                                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                                    {complaint.asset_tag || 'N/A'}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-3 text-xs text-gray-700 max-w-xs truncate">{complaint.comments}</td>
+                                <td className="px-2 py-3 whitespace-nowrap">
+                                  {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
+                                    <select
+                                      value={complaint.status}
+                                      onChange={(e) => handleStatusChange(complaint.id, e.target.value)}
+                                      className={`px-2 py-1 rounded-full text-xs font-semibold outline-none cursor-pointer ${
+                                        complaint.status === 'Open' ? 'bg-yellow-100 text-yellow-700' :
+                                        complaint.status === 'Pending' ? 'bg-blue-100 text-blue-700' :
+                                        complaint.status === 'Parking' ? 'bg-purple-100 text-purple-700' :
+                                        'bg-green-100 text-green-700'
+                                      }`}
+                                    >
+                                      {statusOptions.map(status => (
+                                        <option key={status} value={status}>{status}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                      complaint.status === 'Open' ? 'bg-yellow-100 text-yellow-700' :
+                                      complaint.status === 'Pending' ? 'bg-blue-100 text-blue-700' :
+                                      complaint.status === 'Parking' ? 'bg-purple-100 text-purple-700' :
+                                      'bg-green-100 text-green-700'
+                                    }`}>
+                                      {complaint.status}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-2 py-3 whitespace-nowrap">
+                                  {(currentUser?.role === 'admin' || currentUser?.role === 'support') ? (
+                                    <select
+                                      value={complaint.assigned_to || ''}
+                                      onChange={(e) => handleAssignmentChange(complaint.id, e.target.value)}
+                                      className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white"
+                                    >
+                                      <option value="">Unassigned</option>
+                                      {users.filter(u => u.role === 'support' || u.role === 'admin').map((user) => (
+                                        <option key={user.id} value={user.username}>
+                                          {user.username}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span className="text-xs text-gray-700">
+                                      {complaint.assigned_to ? (
+                                        <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold whitespace-nowrap">
+                                          👤 {complaint.assigned_to}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400 text-xs">Unassigned</span>
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.branch}</td>
+                                {currentUser?.role === 'admin' && (
+                                  <td className="px-2 py-3 text-xs text-gray-700 whitespace-nowrap">{complaint.created_by}</td>
+                                )}
+                                <td className="px-2 py-3 whitespace-nowrap">
+                                  <button
+                                    onClick={() => setExpandedComplaint(expandedComplaint === complaint.id ? null : complaint.id)}
+                                    className="text-blue-600 hover:text-blue-800 font-semibold text-xs flex items-center gap-1"
+                                  >
+                                    {expandedComplaint === complaint.id ? '▼ Hide' : '▶ View'}
+                                  </button>
+                                </td>
+                              </tr>
+                              
+                              {/* Expandable Details Row */}
+                              {expandedComplaint === complaint.id && (
+                                <tr className="bg-gray-50">
+                                  <td colSpan={currentUser?.role === 'admin' ? 13 : 12} className="px-2 py-4">
+                                    <div className="bg-white rounded-lg p-4 shadow-inner">
+                                      <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+                                        <FileText className="w-4 h-4 mr-2" />
+                                        Additional Details
+                                      </h4>
+                                      
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Status Remarks (for Pending/Parking) */}
+                                        {complaint.status_remarks && (complaint.status === 'Pending' || complaint.status === 'Parking') && (
+                                          <div className="col-span-2">
+                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                              <p className="text-xs font-semibold text-blue-700 mb-1">Status Remarks ({complaint.status})</p>
+                                              <p className="text-sm text-gray-700">{complaint.status_remarks}</p>
+                                              {complaint.updated_by && (
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                  Updated by: {complaint.updated_by} 
+                                                  {complaint.updated_at && ` on ${new Date(complaint.updated_at).toLocaleString()}`}
+                                                </p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* RCA Details (for Resolved) */}
+                                        {complaint.status === 'Resolved' && (
+                                          <>
+                                            {complaint.rca && (
+                                              <div>
+                                                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                                  <p className="text-xs font-semibold text-green-700 mb-1">Root Cause Analysis</p>
+                                                  <p className="text-sm font-semibold text-gray-800">{complaint.rca}</p>
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {complaint.resolution_remarks && (
+                                              <div>
+                                                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                                  <p className="text-xs font-semibold text-green-700 mb-1">Resolution Remarks</p>
+                                                  <p className="text-sm text-gray-700">{complaint.resolution_remarks}</p>
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            <div>
+                                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                                <p className="text-xs font-semibold text-gray-600 mb-1">Resolved By</p>
+                                                <p className="text-sm text-gray-800">
+                                                  {complaint.resolved_by || 'N/A'}
+                                                </p>
+                                              </div>
+                                            </div>
+                                            
+                                            <div>
+                                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                                <p className="text-xs font-semibold text-gray-600 mb-1">Resolved At</p>
+                                                <p className="text-sm text-gray-800">
+                                                  {complaint.resolved_at ? new Date(complaint.resolved_at).toLocaleString() : 'N/A'}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </>
+                                        )}
+                                        
+                                        {/* Show message if no additional details */}
+                                        {!complaint.status_remarks && complaint.status !== 'Resolved' && (
+                                          <div className="col-span-2">
+                                            <p className="text-sm text-gray-500 italic">No additional details available for this complaint.</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
 </div>
 
            {/* ADD NEW COMPLAINT */}
-{currentView === 'add' && (
-  <div className="max-w-4xl mx-auto">
-    <div className="flex items-center gap-4 mb-6">
-      <button
-        onClick={() => setCurrentView('complaints')}
-        className="flex items-center text-gray-600 hover:text-gray-800 transition"
-      >
-        <ArrowLeft className="w-5 h-5 mr-2" />
-        Back to Complaints
-      </button>
-    </div>
-    <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Maintenance Complaint</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaint Details</h3>
+            {currentView === 'add' && (
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center gap-4 mb-6">
+                  <button
+                    onClick={() => setCurrentView('complaints')}
+                    className="flex items-center text-gray-600 hover:text-gray-800 transition"
+                  >
+                    <ArrowLeft className="w-5 h-5 mr-2" />
+                    Back to Complaints
+                  </button>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Maintenance Complaint</h2>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaint Details</h3>
                 
                 <div className="space-y-4">
                   <div>
