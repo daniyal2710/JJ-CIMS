@@ -6272,24 +6272,23 @@ This report was generated from Johnny & Jugnu CMS.
                   </div>
                 )}
 
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={() => {
-                      setShowSubCategoryModal(false);
-                      setError('');
-                    }}
-                    className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-      </main>
-
-    </div>
-  );
-};
-
-export default JohnnyCMS;
+                <div className="mt-6 flex justify-end">        // ← OPENS HERE
+                    <button
+                      onClick={() => {
+                        setShowSubCategoryModal(false);
+                        setError('');
+                      }}
+                      className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                    >
+                      Close
+                    </button>
+                  </div>                                         // ← CLOSES HERE
+                </div>                                           // ← Closes modal content
+              </div>                                             // ← Closes modal wrapper
+            )}                                                   // ← Closes showSubCategoryModal
+          </main>
+        </div>
+      );
+    };
+    
+    export default JohnnyCMS;
