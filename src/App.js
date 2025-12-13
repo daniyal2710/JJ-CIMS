@@ -3401,7 +3401,7 @@ This report was generated from Johnny & Jugnu CMS.
                         </button>
                       </>
                     )}
-
+                  </div>
                   <div className="bg-white rounded-xl shadow-md p-6">
                     <div className="mb-6 flex gap-4">
                       <div className="flex-1">
@@ -3927,97 +3927,97 @@ This report was generated from Johnny & Jugnu CMS.
           </div>
         )}
 
-        {/* PETTY CASH MANAGEMENT */}
-        {currentView === 'petty-cash' && currentUser?.role === 'admin' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">Petty Cash Management</h2>
-                <p className="text-sm text-gray-600 mt-1">Track expenses, equipment purchases, and maintenance costs</p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowPettyCashModal(true);
-                    setEditingPettyCash(null);
-                    setNewPettyCash({
-                      month: new Date().toISOString().slice(0, 7),
-                      dated: new Date().toISOString().split('T')[0],
-                      description: '',
-                      invoice_no: '',
-                      complaint_no: '',
-                      branch: currentUser?.branch || '',
-                      vendor: '',
-                      amount: 0,
-                      payment_status: 'Pending',
-                      paid_amount: 0,
-                      comments: ''
-                    });
-                  }}
-                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition shadow-md flex items-center"
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Add Entry
-                </button>
-                <button
-                  onClick={exportPettyCashToExcel}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition shadow-md flex items-center"
-                >
-                  <Download className="w-5 h-5 mr-2" />
-                  Export PDF
-                </button>
-              </div>
-            </div>
+              {/* PETTY CASH MANAGEMENT */}
+                  {currentView === 'petty-cash' && currentUser?.role === 'admin' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-6">
+                        <div>
+                          <h2 className="text-2xl font-bold text-gray-800">Petty Cash Management</h2>
+                          <p className="text-sm text-gray-600 mt-1">Track expenses, equipment purchases, and maintenance costs</p>
+                        </div>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => {
+                              setShowPettyCashModal(true);
+                              setEditingPettyCash(null);
+                              setNewPettyCash({
+                                month: new Date().toISOString().slice(0, 7),
+                                dated: new Date().toISOString().split('T')[0],
+                                description: '',
+                                invoice_no: '',
+                                complaint_no: '',
+                                branch: currentUser?.branch || '',
+                                vendor: '',
+                                amount: 0,
+                                payment_status: 'Pending',
+                                paid_amount: 0,
+                                comments: ''
+                              });
+                            }}
+                            className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition shadow-md flex items-center"
+                          >
+                            <Plus className="w-5 h-5 mr-2" />
+                            Add Entry
+                          </button>
+                          <button
+                            onClick={exportPettyCashToExcel}
+                            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                          >
+                            <Download className="w-5 h-5 mr-2" />
+                            Export PDF
+                          </button>
+                        </div>
+                      </div>
 
-            {/* Filters */}
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                  <input
-                    type="date"
-                    value={pettyCashFilter.startDate}
-                    onChange={(e) => setPettyCashFilter({...pettyCashFilter, startDate: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                  <input
-                    type="date"
-                    value={pettyCashFilter.endDate}
-                    onChange={(e) => setPettyCashFilter({...pettyCashFilter, endDate: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
-                  <select
-                    value={pettyCashFilter.branch}
-                    onChange={(e) => setPettyCashFilter({...pettyCashFilter, branch: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                  >
-                    <option value="all">All Branches</option>
-                    {warehouses.map(w => (
-                      <option key={w.id} value={w.branch}>{w.branch}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
-                  <select
-                    value={pettyCashFilter.vendor}
-                    onChange={(e) => setPettyCashFilter({...pettyCashFilter, vendor: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                  >
-                    <option value="all">All Vendors</option>
-                    {pettyCashVendors.map(v => (
-                      <option key={v} value={v}>{v}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
+                      {/* Filters */}
+                      <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                            <input
+                              type="date"
+                              value={pettyCashFilter.startDate}
+                              onChange={(e) => setPettyCashFilter({...pettyCashFilter, startDate: e.target.value})}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                            <input
+                              type="date"
+                              value={pettyCashFilter.endDate}
+                              onChange={(e) => setPettyCashFilter({...pettyCashFilter, endDate: e.target.value})}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
+                            <select
+                              value={pettyCashFilter.branch}
+                              onChange={(e) => setPettyCashFilter({...pettyCashFilter, branch: e.target.value})}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            >
+                              <option value="all">All Branches</option>
+                              {warehouses.map(w => (
+                                <option key={w.id} value={w.branch}>{w.branch}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
+                            <select
+                              value={pettyCashFilter.vendor}
+                              onChange={(e) => setPettyCashFilter({...pettyCashFilter, vendor: e.target.value})}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            >
+                              <option value="all">All Vendors</option>
+                              {pettyCashVendors.map(v => (
+                                <option key={v} value={v}>{v}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -4175,7 +4175,7 @@ This report was generated from Johnny & Jugnu CMS.
           </div>
         )}
 
-        {/* USERS MANAGEMENT */}
+                    {/* USERS MANAGEMENT */}
                 {currentView === 'users' && currentUser?.role === 'admin' && (
                   <div>
                     <div className="flex justify-between items-center mb-6">
@@ -4265,115 +4265,115 @@ This report was generated from Johnny & Jugnu CMS.
                   </div>
                 )}
 
-        {/* CATEGORIES MANAGEMENT */}
-        {currentView === 'categories' && currentUser?.role === 'admin' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Category Management</h2>
-              <button
-                onClick={() => setShowCategoryModal(true)}
-                className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
-              >
-                <Plus className="inline-block w-4 h-4 mr-2" />
-                Add Category
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <Loader className="animate-spin w-8 h-8 text-orange-500" />
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <span className="bg-blue-500 text-white px-3 py-1 rounded-full mr-3">IT</span>
-                    {allCategories.filter(c => c.department === 'IT').length} Categories
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {allCategories.filter(c => c.department === 'IT').map((category) => (
-                      <div key={category.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:border-orange-300 transition">
-                        <div className="flex items-center">
-                          <Tag className="w-4 h-4 text-blue-500 mr-2" />
-                          <span className="text-gray-800">{category.name}</span>
+                {/* CATEGORIES MANAGEMENT */}
+                {currentView === 'categories' && currentUser?.role === 'admin' && (
+                      <div>
+                        <div className="flex justify-between items-center mb-6">
+                          <h2 className="text-2xl font-bold text-gray-800">Category Management</h2>
+                          <button
+                            onClick={() => setShowCategoryModal(true)}
+                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md"
+                          >
+                            <Plus className="inline-block w-4 h-4 mr-2" />
+                            Add Category
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleDeleteCategory(category.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {allCategories.filter(c => c.department === 'IT').length === 0 && (
-                    <p className="text-gray-500 text-center py-4">No categories in IT department</p>
-                  )}
-                </div>
 
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">Operations</span>
-                    {allCategories.filter(c => c.department === 'Operations').length} Categories
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {allCategories.filter(c => c.department === 'Operations').map((category) => (
-                      <div key={category.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:border-orange-300 transition">
-                        <div className="flex items-center">
-                          <Tag className="w-4 h-4 text-green-500 mr-2" />
-                          <span className="text-gray-800">{category.name}</span>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteCategory(category.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {allCategories.filter(c => c.department === 'Operations').length === 0 && (
-                    <p className="text-gray-500 text-center py-4">No categories in Operations department</p>
-                  )}
-                </div>
+                        {loading ? (
+                          <div className="flex justify-center items-center py-12">
+                            <Loader className="animate-spin w-8 h-8 text-orange-500" />
+                          </div>
+                          ) : (
+                          <div className="space-y-6">
+                            <div className="bg-white rounded-xl shadow-md p-6">
+                              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                <span className="bg-blue-500 text-white px-3 py-1 rounded-full mr-3">IT</span>
+                                {allCategories.filter(c => c.department === 'IT').length} Categories
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {allCategories.filter(c => c.department === 'IT').map((category) => (
+                                  <div key={category.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:border-orange-300 transition">
+                                    <div className="flex items-center">
+                                      <Tag className="w-4 h-4 text-blue-500 mr-2" />
+                                      <span className="text-gray-800">{category.name}</span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteCategory(category.id)}
+                                      className="text-red-600 hover:text-red-800"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                              {allCategories.filter(c => c.department === 'IT').length === 0 && (
+                                <p className="text-gray-500 text-center py-4">No categories in IT department</p>
+                              )}
+                            </div>
 
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Maintenance</span>
-                    {allCategories.filter(c => c.department === 'Maintenance').length} Categories
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {allCategories.filter(c => c.department === 'Maintenance').map((category) => (
-                      <div key={category.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:border-orange-300 transition">
-                        <div className="flex items-center">
-                          <Tag className="w-4 h-4 text-purple-500 mr-2" />
-                          <span className="text-gray-800">{category.name}</span>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteCategory(category.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                            <div className="bg-white rounded-xl shadow-md p-6">
+                              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">Operations</span>
+                                {allCategories.filter(c => c.department === 'Operations').length} Categories
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {allCategories.filter(c => c.department === 'Operations').map((category) => (
+                                  <div key={category.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:border-orange-300 transition">
+                                    <div className="flex items-center">
+                                      <Tag className="w-4 h-4 text-green-500 mr-2" />
+                                      <span className="text-gray-800">{category.name}</span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteCategory(category.id)}
+                                      className="text-red-600 hover:text-red-800"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                              {allCategories.filter(c => c.department === 'Operations').length === 0 && (
+                                <p className="text-gray-500 text-center py-4">No categories in Operations department</p>
+                              )}
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-md p-6">
+                              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Maintenance</span>
+                                {allCategories.filter(c => c.department === 'Maintenance').length} Categories
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {allCategories.filter(c => c.department === 'Maintenance').map((category) => (
+                                  <div key={category.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:border-orange-300 transition">
+                                    <div className="flex items-center">
+                                      <Tag className="w-4 h-4 text-purple-500 mr-2" />
+                                      <span className="text-gray-800">{category.name}</span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteCategory(category.id)}
+                                      className="text-red-600 hover:text-red-800"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                              {allCategories.filter(c => c.department === 'Maintenance').length === 0 && (
+                                <p className="text-gray-500 text-center py-4">No categories in Maintenance department</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                  {allCategories.filter(c => c.department === 'Maintenance').length === 0 && (
-                    <p className="text-gray-500 text-center py-4">No categories in Maintenance department</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        {/* REPORTS VIEW */}
-        {currentView === 'reports' && (
-          <JohnnyReports 
-            complaints={complaints}
-            pettyCashEntries={pettyCashEntries}
-            currentUser={currentUser}
-          />
-        )}
+                    )}
+                    {/* REPORTS VIEW */}
+                    {currentView === 'reports' && (
+                      <JohnnyReports 
+                        complaints={complaints}
+                        pettyCashEntries={pettyCashEntries}
+                        currentUser={currentUser}
+                      />
+                    )}
       </main>
 
       {/* Inventory Item Modal */}
