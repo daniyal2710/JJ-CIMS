@@ -3723,14 +3723,17 @@ This report was generated from Johnny & Jugnu CMS.
                                 )}
                               </React.Fragment>
                             ))}
-                         </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div> {/* Closes bg-white rounded-xl shadow-md p-6 */}
-                </div> 
-        {currentView === 'add' && (
-          <div className="max-w-4xl mx-auto">
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div> {/* Closes bg-white rounded-xl shadow-md p-6 */}
+            </div>   {/* Closes w-full - the main complaints container */}
+          )}         {/* ← ADD THIS LINE - Closes currentView === 'complaints' */}
+
+           {/* ADD NEW COMPLAINT */}
+          {currentView === 'add' && (
+            <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4 mb-6">
               <button
                 onClick={() => setCurrentView('complaints')}
