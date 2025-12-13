@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Package, ShoppingCart, Archive, RefreshCw, Calendar, DollarSign, Layers, Plus, Edit, Trash2, X, Loader, Download, Search, AlertTriangle, TrendingDown as StockDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Package, ShoppingCart, Archive, RefreshCw, Calendar, DollarSign, Layers, Plus, Edit, Trash2, X, Loader, Download, Search, AlertTriangle, TrendingDown as StockDown, Users } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -781,7 +781,8 @@ const JohnnyInventory = ({ currentUser }) => {
   };
 
   // ==================== FILTERED DATA ====================
-  const filteredInventory = inventoryItems.filter(item => {
+  const filteredInventory = useMemo(() => {
+  return inventoryItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchInventory.toLowerCase()) ||
                          item.sku.toLowerCase().includes(searchInventory.toLowerCase());
     const matchesCategory = inventoryFilter.category === 'all' || item.category === inventoryFilter.category;
@@ -794,8 +795,9 @@ const JohnnyInventory = ({ currentUser }) => {
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
+}, [inventoryItems, searchInventory, inventoryFilter]);
 
-  const inventoryAnalytics = getInventoryAnalytics();
+const inventoryAnalytics = useMemo(() => getInventoryAnalytics(), [inventoryItems]);
 
   // ==================== RENDER ====================
   return (
