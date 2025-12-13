@@ -3505,7 +3505,7 @@ This report was generated from Johnny & Jugnu CMS.
                       <div className="flex justify-center items-center py-12">
                         <Loader className="animate-spin w-8 h-8 text-orange-500" />
                       </div>
-                    ) : (
+                      ) : (
                       <div className="overflow-x-auto w-full">
                         <table className="w-full min-w-max">
                           <thead>
@@ -3727,10 +3727,9 @@ This report was generated from Johnny & Jugnu CMS.
                         </table>
                       </div>  {/* Closes overflow-x-auto w-full */}
                     )}
-                  </div>  {/* Closes bg-white rounded-xl shadow-md p-6 */}
-              )}           {/* Closes currentView === 'complaints' */}
-
-
+                  </div> {/* Closes bg-white rounded-xl shadow-md p-6 */}
+                  </div> {/* Closes currentView === 'complaints' */}
+              )}           
 
         {/* ADD NEW COMPLAINT */}
         {currentView === 'add' && (
