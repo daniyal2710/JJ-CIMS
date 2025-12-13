@@ -4374,6 +4374,7 @@ This report was generated from Johnny & Jugnu CMS.
             currentUser={currentUser}
           />
         )}
+        </div>
       </main>
 
       {/* Inventory Item Modal */}
