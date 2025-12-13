@@ -3723,14 +3723,13 @@ This report was generated from Johnny & Jugnu CMS.
                                 )}
                               </React.Fragment>
                             ))}
-                        </tbody>
+                         </tbody>
                         </table>
                       </div>  {/* Closes overflow-x-auto w-full */}
                     )}
                   </div> {/* Closes bg-white rounded-xl shadow-md p-6 */}
-                  </div> {/* Closes currentView === 'complaints' */}
-              )}           
-
+                </div> {/* This should close the main complaints container */}
+              )}
         {/* ADD NEW COMPLAINT */}
         {currentView === 'add' && (
           <div className="max-w-4xl mx-auto">
