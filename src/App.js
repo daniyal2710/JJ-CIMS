@@ -4375,7 +4375,6 @@ This report was generated from Johnny & Jugnu CMS.
           />
         )}
       </main>
-      </div>
 
       {/* Inventory Item Modal */}
       {showInventoryModal && (
