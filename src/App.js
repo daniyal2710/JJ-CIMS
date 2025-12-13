@@ -6266,7 +6266,7 @@ This report was generated from Johnny & Jugnu CMS.
                       {allSubCategories.filter(sc => sc.department === 'Maintenance').length === 0 && (
                         <p className="text-gray-500 text-center py-4">No sub-categories in Maintenance department</p>
                       )}
-                    </div>
+                                        </div>
                   </div>
                 )}
 
@@ -6284,7 +6284,10 @@ This report was generated from Johnny & Jugnu CMS.
               </div>
             </div>
           )}
-          
+
+        </div> {/* This was missing - closes the main content div */}
+      </main>
+
     </div>
   );
 };
