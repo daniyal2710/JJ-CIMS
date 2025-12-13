@@ -6048,68 +6048,68 @@ This report was generated from Johnny & Jugnu CMS.
                         </div>
                       )}
                         {/* SUB-CATEGORY MODAL */}
-{showSubCategoryModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-    <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-800">Manage Sub-Categories</h3>
-        <button
-          onClick={() => {
-            setShowSubCategoryModal(false);
-            setError('');
-          }}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <X className="w-6 h-6" />
-        </button>
-      </div>
+            {showSubCategoryModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-gray-800">Manage Sub-Categories</h3>
+                    <button
+                      onClick={() => {
+                        setShowSubCategoryModal(false);
+                        setError('');
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
 
-      {/* Add New Sub-Category Form */}
-      <div className="bg-gray-50 p-6 rounded-lg mb-6">
-        <h4 className="text-sm font-semibold text-gray-700 mb-4">Add New Sub-Category</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Department *</label>
-            <select
-              value={newSubCategory.department}
-              onChange={(e) => setNewSubCategory({
-                ...newSubCategory, 
-                department: e.target.value,
-                category_id: ''
-              })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              disabled={loading}
-            >
-              <option value="IT">IT</option>
-              <option value="Operations">Operations</option>
-              <option value="Maintenance">Maintenance</option>
-            </select>
-          </div>
+              {/* Add New Sub-Category Form */}
+              <div className="bg-gray-50 p-6 rounded-lg mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-4">Add New Sub-Category</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Department *</label>
+                    <select
+                      value={newSubCategory.department}
+                      onChange={(e) => setNewSubCategory({
+                        ...newSubCategory, 
+                        department: e.target.value,
+                        category_id: ''
+                      })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                      disabled={loading}
+                    >
+                      <option value="IT">IT</option>
+                      <option value="Operations">Operations</option>
+                      <option value="Maintenance">Maintenance</option>
+                    </select>
+                  </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Parent Category *</label>
-            <select
-              value={newSubCategory.category_id}
-              onChange={(e) => setNewSubCategory({...newSubCategory, category_id: e.target.value})}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              disabled={loading}
-            >
-              <option value="">Select Category</option>
-              {allCategories
-                .filter(cat => cat.department === newSubCategory.department)
-                .map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))
-              }
-            </select>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Parent Category *</label>
+              <select
+                value={newSubCategory.category_id}
+                onChange={(e) => setNewSubCategory({...newSubCategory, category_id: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                disabled={loading}
+              >
+                <option value="">Select Category</option>
+                {allCategories
+                  .filter(cat => cat.department === newSubCategory.department)
+                  .map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))
+                }
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Sub-Category Name *</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newSubCategory.name}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sub-Category Name *</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newSubCategory.name}
                 onChange={(e) => setNewSubCategory({...newSubCategory, name: e.target.value})}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                 placeholder="Enter sub-category name"
@@ -6128,18 +6128,18 @@ This report was generated from Johnny & Jugnu CMS.
                     Add
                   </>
                 )}
-              </button>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+          </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader className="animate-spin w-8 h-8 text-indigo-500" />
-        </div>
-      ) : (
-        <div className="space-y-6">
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader className="animate-spin w-8 h-8 text-indigo-500" />
+            </div>
+          ) : (
+            <div className="space-y-6">
           {/* IT Sub-Categories */}
           <div className="bg-white rounded-xl shadow-md p-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
