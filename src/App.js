@@ -3725,8 +3725,8 @@ This report was generated from Johnny & Jugnu CMS.
                             ))}
                          </tbody>
                         </table>
-                      </div>  {/* Closes overflow-x-auto w-full */}
-                    )
+                      </div>
+                    )}
                   </div> {/* Closes bg-white rounded-xl shadow-md p-6 */}
                 </div> {/* This should close the main complaints container */}
               )}
