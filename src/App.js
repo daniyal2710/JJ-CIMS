@@ -75,6 +75,7 @@ const JohnnyCMS = () => {
     assigned_to: '',
     asset_tag: ''
   });
+  const [warehouses, setWarehouses] = useState([]);
 
   const [branchFilter, setBranchFilter] = useState('all');
   const [filterData, setFilterData] = useState({
@@ -213,6 +214,7 @@ const JohnnyCMS = () => {
       loadComplaints();
       loadCategories();
       loadSubCategories();
+      loadWarehouses();
       loadFeatures();
       loadCurrentUserFeatures();
       if (currentUser?.role === 'admin') {
@@ -266,6 +268,20 @@ const JohnnyCMS = () => {
       return [];
     }
   };
+
+  const loadWarehouses = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('warehouses')
+      .select('*')
+      .order('name', { ascending: true });
+    
+    if (error) throw error;
+    setWarehouses(data || []);
+  } catch (err) {
+    console.error('Error loading warehouses:', err);
+  }
+};
 
   const loadCurrentUserFeatures = async () => {
     if (!currentUser?.id) return;
