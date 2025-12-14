@@ -57,7 +57,7 @@ const JohnnyCMS = () => {
     'Software Bug',
     'Network Problem',
     'Configuration Error',
-    'Maintenance Required',
+    'Facility Required',
     'Third Party Issue',
     'Power Failure',
     'Environmental Factor',
@@ -123,7 +123,7 @@ const JohnnyCMS = () => {
   const [emailReportType, setEmailReportType] = useState('petty-cash');
 
   const pettyCashVendors = ['local market', 'DAHUA', 'indriver', 'HAQ enterprise', 'BRAIN TECH', 'NKS', 'Other'];
-  const pettyCashComments = ['New Installation', 'Repairing', 'transportation', 'Maintenance', 'Purchase', 'Other'];
+  const pettyCashComments = ['New Installation', 'Repairing', 'transportation', 'Facility', 'Purchase', 'Other'];
   const paymentStatuses = ['Pending', 'Partially Paid', 'Paid'];
   const equipmentTypes = [
     'Camera',
@@ -2667,7 +2667,7 @@ This report was generated from Johnny & Jugnu CMS.
                     Back to Complaints
                   </button>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Maintenance Complaint</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Facility Complaint</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="bg-white rounded-xl shadow-md p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaint Details</h3>
@@ -2689,7 +2689,7 @@ This report was generated from Johnny & Jugnu CMS.
                         >
                           <option value="IT">IT</option>
                           <option value="Operations">Operations</option>
-                          <option value="Maintenance">Maintenance</option>
+                          <option value="Facility">Facility</option>
                         </select>
                       </div>
 
@@ -2856,7 +2856,7 @@ This report was generated from Johnny & Jugnu CMS.
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-800">Petty Cash Management</h2>
-                    <p className="text-sm text-gray-600 mt-1">Track expenses, equipment purchases, and maintenance costs</p>
+                    <p className="text-sm text-gray-600 mt-1">Track expenses, equipment purchases, and Facility costs</p>
                   </div>
                   <div className="flex gap-3">
                     <button
@@ -3260,11 +3260,11 @@ This report was generated from Johnny & Jugnu CMS.
 
                     <div className="bg-white rounded-xl shadow-md p-6">
                       <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Maintenance</span>
-                        {allCategories.filter(c => c.department === 'Maintenance').length} Categories
+                        <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Facility</span>
+                        {allCategories.filter(c => c.department === 'Facility').length} Categories
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {allCategories.filter(c => c.department === 'Maintenance').map((category) => (
+                        {allCategories.filter(c => c.department === 'Facility').map((category) => (
                           <div key={category.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:border-orange-300 transition">
                             <div className="flex items-center">
                               <Tag className="w-4 h-4 text-purple-500 mr-2" />
@@ -3279,8 +3279,8 @@ This report was generated from Johnny & Jugnu CMS.
                           </div>
                         ))}
                       </div>
-                      {allCategories.filter(c => c.department === 'Maintenance').length === 0 && (
-                        <p className="text-gray-500 text-center py-4">No categories in Maintenance department</p>
+                      {allCategories.filter(c => c.department === 'Facility').length === 0 && (
+                        <p className="text-gray-500 text-center py-4">No categories in Facility department</p>
                       )}
                     </div>
                   </div>
@@ -3614,7 +3614,7 @@ This report was generated from Johnny & Jugnu CMS.
                   >
                     <option value="IT">IT</option>
                     <option value="Operations">Operations</option>
-                    <option value="Maintenance">Maintenance</option>
+                    <option value="Facility">Facility</option>
                   </select>
                 </div>
 
@@ -4105,7 +4105,7 @@ This report was generated from Johnny & Jugnu CMS.
                     >
                       <option value="IT">IT</option>
                       <option value="Operations">Operations</option>
-                      <option value="Maintenance">Maintenance</option>
+                      <option value="Facility">Facility</option>
                     </select>
                   </div>
 
@@ -4247,14 +4247,14 @@ This report was generated from Johnny & Jugnu CMS.
                     )}
                   </div>
 
-                  {/* Maintenance Sub-Categories */}
+                  {/* Facility Sub-Categories */}
                   <div className="bg-white rounded-xl shadow-md p-6">
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                      <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Maintenance</span>
-                      {allSubCategories.filter(sc => sc.department === 'Maintenance').length} Sub-Categories
+                      <span className="bg-purple-500 text-white px-3 py-1 rounded-full mr-3">Facility</span>
+                      {allSubCategories.filter(sc => sc.department === 'Facility').length} Sub-Categories
                     </h3>
 
-                    {allCategories.filter(c => c.department === 'Maintenance').map(category => {
+                    {allCategories.filter(c => c.department === 'Facility').map(category => {
                       const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
                       if (subCats.length === 0) return null;
 
@@ -4284,8 +4284,8 @@ This report was generated from Johnny & Jugnu CMS.
                       );
                     })}
 
-                    {allSubCategories.filter(sc => sc.department === 'Maintenance').length === 0 && (
-                      <p className="text-gray-500 text-center py-4">No sub-categories in Maintenance department</p>
+                    {allSubCategories.filter(sc => sc.department === 'Facility').length === 0 && (
+                      <p className="text-gray-500 text-center py-4">No sub-categories in Facility department</p>
                     )}
                   </div>
                 </div>
