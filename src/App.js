@@ -407,52 +407,61 @@ const JohnnyCMS = () => {
     }
   };
 
-     // Load Asset Tags from Database
-    const loadAssetTags = async () => {
-     try {
-       let query = supabase
-         .from('asset_tags')
-         .select('*')
-         .eq('status', 'active')
-         .order('asset_tag', { ascending: true });
-       
-       // Filter by branch for non-admin users
-       if (currentUser?.role !== 'admin' && currentUser?.role !== 'support') {
-         query = query.eq('branch', currentUser?.branch);
-       }
-       
-       const { data, error } = await query;
-       
-       if (error) throw error;
-       setAssetTags(data || []);
-     } catch (err) {
-       console.error('Error loading asset tags:', err);
-       setAssetTags([]);
-     }
-    };
+              // Load Asset Tags from Database
+          const loadAssetTags = async () => {
+            try {
+              let query = supabase
+                .from('asset_tags')
+                .select('*')
+                .order('asset_tag', { ascending: true });
+              
+              // Filter by branch for non-admin/non-support users
+              if (currentUser?.role !== 'admin' && currentUser?.role !== 'support') {
+                query = query.eq('branch', currentUser?.branch);
+              }
+              
+              // Only load active assets for all users
+              query = query.eq('status', 'active');
+              
+              const { data, error } = await query;
+              
+              if (error) throw error;
+              setAssetTags(data || []);
+              
+              console.log('Asset tags loaded:', data); // For debugging
+            } catch (err) {
+              console.error('Error loading asset tags:', err);
+              setAssetTags([]);
+            }
+          };
 
-    // Filter Asset Tags by Sub-Category and Branch
-    const filterAssetTagsBySubCategory = (subCategory) => {
-    if (!subCategory) {
-      setFilteredAssetTags([]);
-      return;
-    }
-  
-    // Get current branch
-    const currentBranch = currentUser?.branch;
-  
-      // Filter asset tags by sub-category and branch
-      const filtered = assetTags.filter(tag => {
-        const matchesSubCategory = tag.sub_category === subCategory;
-        const matchesBranch = currentUser?.role === 'admin' || currentUser?.role === 'support' 
-          ? true // Admin/Support can see all branches
-          : tag.branch === currentBranch;
-        
-        return matchesSubCategory && matchesBranch;
-      });
-  
-     setFilteredAssetTags(filtered);
-    };
+              // Filter Asset Tags by Sub-Category and Branch
+              const filterAssetTagsBySubCategory = (subCategory) => {
+            if (!subCategory) {
+              setFilteredAssetTags([]);
+              return;
+            }
+            
+            console.log('Filtering by sub-category:', subCategory); // Debug
+            console.log('Available asset tags:', assetTags); // Debug
+            
+            // Get current branch
+            const currentBranch = currentUser?.branch;
+            
+            // Filter asset tags by sub-category and branch
+            const filtered = assetTags.filter(tag => {
+              const matchesSubCategory = tag.sub_category === subCategory;
+              const matchesBranch = currentUser?.role === 'admin' || currentUser?.role === 'support' 
+                ? true // Admin/Support can see all branches
+                : tag.branch === currentBranch;
+              
+              return matchesSubCategory && matchesBranch;
+            });
+            
+            console.log('Filtered asset tags:', filtered); // Debug
+            
+            setFilteredAssetTags(filtered);
+          };
 
           // Add or Update Asset Tag
       const handleAddAssetTag = async () => {
@@ -2461,13 +2470,15 @@ This report was generated from Johnny & Jugnu CMS.
               </>
             )}
 
+            {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
               <button
-          onClick={() => setShowAssetTagModal(true)}
-          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
-        >
-          <Tag className="w-5 h-5 mr-2" />
-          Asset Tags
-        </button>
+                onClick={() => setShowAssetTagModal(true)}
+                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
+              >
+                <Tag className="w-5 h-5 mr-2" />
+                Asset Tags
+              </button>
+            )}
     </div>
 
     {/* Search and Table Container */}
