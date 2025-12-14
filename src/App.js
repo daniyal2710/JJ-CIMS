@@ -2441,25 +2441,33 @@ This report was generated from Johnny & Jugnu CMS.
         Add New
       </button>
       
-      {currentUser?.role === 'admin' && (
-        <>
-          <button
-            onClick={() => setShowCategoryModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
-          >
-            <Layers className="w-5 h-5 mr-2" />
-            Categories
-          </button>
-          
-          <button
-            onClick={() => setShowSubCategoryModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
-          >
-            <Layers className="w-5 h-5 mr-2" />
-            Sub-Categories
-          </button>
-        </>
-      )}
+            {currentUser?.role === 'admin' && (
+              <>
+                <button
+                  onClick={() => setShowCategoryModal(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                >
+                  <Layers className="w-5 h-5 mr-2" />
+                  Categories
+                </button>
+                
+                <button
+                  onClick={() => setShowSubCategoryModal(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
+                >
+                  <Layers className="w-5 h-5 mr-2" />
+                  Sub-Categories
+                </button>
+              </>
+            )}
+
+              <button
+          onClick={() => setShowAssetTagModal(true)}
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
+        >
+          <Tag className="w-5 h-5 mr-2" />
+          Asset Tags
+        </button>
     </div>
 
     {/* Search and Table Container */}
