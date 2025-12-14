@@ -2688,7 +2688,7 @@ This report was generated from Johnny & Jugnu CMS.
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
                         >
                           <option value="IT">IT</option>
-                          <option value="Operations">Operations</option>
+                          <option value="O">O</option>
                           <option value="Facility">Facility</option>
                         </select>
                       </div>
@@ -3234,11 +3234,11 @@ This report was generated from Johnny & Jugnu CMS.
 
                     <div className="bg-white rounded-xl shadow-md p-6">
                       <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">Operations</span>
-                        {allCategories.filter(c => c.department === 'Operations').length} Categories
+                        <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">O</span>
+                        {allCategories.filter(c => c.department === 'O').length} Categories
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {allCategories.filter(c => c.department === 'Operations').map((category) => (
+                        {allCategories.filter(c => c.department === 'O').map((category) => (
                           <div key={category.id} className="border border-gray-200 rounded-lg p-3 flex justify-between items-center hover:border-orange-300 transition">
                             <div className="flex items-center">
                               <Tag className="w-4 h-4 text-green-500 mr-2" />
@@ -3253,8 +3253,8 @@ This report was generated from Johnny & Jugnu CMS.
                           </div>
                         ))}
                       </div>
-                      {allCategories.filter(c => c.department === 'Operations').length === 0 && (
-                        <p className="text-gray-500 text-center py-4">No categories in Operations department</p>
+                      {allCategories.filter(c => c.department === 'O').length === 0 && (
+                        <p className="text-gray-500 text-center py-4">No categories in O department</p>
                       )}
                     </div>
 
@@ -3613,7 +3613,7 @@ This report was generated from Johnny & Jugnu CMS.
                     disabled={loading}
                   >
                     <option value="IT">IT</option>
-                    <option value="Operations">Operations</option>
+                    <option value="O">O</option>
                     <option value="Facility">Facility</option>
                   </select>
                 </div>
@@ -4104,7 +4104,7 @@ This report was generated from Johnny & Jugnu CMS.
                       disabled={loading}
                     >
                       <option value="IT">IT</option>
-                      <option value="Operations">Operations</option>
+                      <option value="O">O</option>
                       <option value="Facility">Facility</option>
                     </select>
                   </div>
@@ -4205,14 +4205,14 @@ This report was generated from Johnny & Jugnu CMS.
                     )}
                   </div>
 
-                  {/* Operations Sub-Categories */}
+                  {/* O Sub-Categories */}
                   <div className="bg-white rounded-xl shadow-md p-6">
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                      <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">Operations</span>
-                      {allSubCategories.filter(sc => sc.department === 'Operations').length} Sub-Categories
+                      <span className="bg-green-500 text-white px-3 py-1 rounded-full mr-3">O</span>
+                      {allSubCategories.filter(sc => sc.department === 'O').length} Sub-Categories
                     </h3>
 
-                    {allCategories.filter(c => c.department === 'Operations').map(category => {
+                    {allCategories.filter(c => c.department === 'O').map(category => {
                       const subCats = allSubCategories.filter(sc => sc.category_id === category.id);
                       if (subCats.length === 0) return null;
 
@@ -4242,8 +4242,8 @@ This report was generated from Johnny & Jugnu CMS.
                       );
                     })}
 
-                    {allSubCategories.filter(sc => sc.department === 'Operations').length === 0 && (
-                      <p className="text-gray-500 text-center py-4">No sub-categories in Operations department</p>
+                    {allSubCategories.filter(sc => sc.department === 'O').length === 0 && (
+                      <p className="text-gray-500 text-center py-4">No sub-categories in O department</p>
                     )}
                   </div>
 
