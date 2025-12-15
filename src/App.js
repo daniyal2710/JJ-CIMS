@@ -408,32 +408,38 @@ const JohnnyCMS = () => {
   };
 
               // Load Asset Tags from Database
-          const loadAssetTags = async () => {
-            try {
-              let query = supabase
-                .from('asset_tags')
-                .select('*')
-                .order('asset_tag', { ascending: true });
-              
-              // Filter by branch for non-admin/non-support users
-              if (currentUser?.role !== 'admin' && currentUser?.role !== 'support') {
-                query = query.eq('branch', currentUser?.branch);
-              }
-              
-              // Only load active assets for all users
-              query = query.eq('status', 'active');
-              
-              const { data, error } = await query;
-              
-              if (error) throw error;
-              setAssetTags(data || []);
-              
-              console.log('Asset tags loaded:', data); // For debugging
-            } catch (err) {
-              console.error('Error loading asset tags:', err);
-              setAssetTags([]);
-            }
-          };
+              const loadAssetTags = async () => {
+                try {
+                console.log('Loading asset tags for user:', currentUser); // Debug
+                
+                let query = supabase
+                  .from('asset_tags')
+                  .select('*')
+                  .eq('status', 'active')
+                  .order('asset_tag', { ascending: true });
+                
+                // For regular users (not admin/support), filter by their branch
+                if (currentUser?.role !== 'admin' && currentUser?.role !== 'support') {
+                  if (!currentUser?.branch) {
+                    console.error('User has no branch assigned:', currentUser);
+                    setAssetTags([]);
+                    return;
+                  }
+                  console.log('Filtering by branch:', currentUser.branch); // Debug
+                  query = query.eq('branch', currentUser.branch);
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) throw error;
+                
+                console.log('Asset tags loaded:', data); // Debug
+                setAssetTags(data || []);
+                } catch (err) {
+                  console.error('Error loading asset tags:', err);
+                  setAssetTags([]);
+                }
+              };
 
               // Filter Asset Tags by Sub-Category and Branch
               const filterAssetTagsBySubCategory = (subCategory) => {
