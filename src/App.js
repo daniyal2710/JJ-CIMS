@@ -2601,64 +2601,70 @@ This report was generated from Johnny & Jugnu CMS.
       </div>
     </div>
 
-    {/* Action Buttons */}
-    <div className="flex gap-3 mb-6">
-      <button
-        onClick={() => {
-          setNewComplaint({
-            department: 'IT',
-            category: '',
-            sub_category: '',
-            comments: '',
-            priority: 'Medium',
-            assigned_to: '',
-            asset_tag: ''
-          });
-          setCurrentView('add');
-        }}
-        className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md flex items-center"
-      >
-        <Plus className="w-5 h-5 mr-2" />
-        Add New
-      </button>
-      
-            {currentUser?.role === 'admin' && (
-              <>
+                  {/* Action Buttons */}
+              <div className="flex gap-3 mb-6">
                 <button
-                  onClick={() => setShowCategoryModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                  onClick={() => {
+                    setNewComplaint({
+                      department: 'IT',
+                      category: '',
+                      sub_category: '',
+                      comments: '',
+                      priority: 'Medium',
+                      assigned_to: '',
+                      asset_tag: '',
+                      equipment: ''
+                    });
+                    setCurrentView('add');
+                  }}
+                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md flex items-center"
                 >
-                  <Layers className="w-5 h-5 mr-2" />
-                  Categories
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add New
                 </button>
                 
-                <button
-                  onClick={() => setShowSubCategoryModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
-                >
-                  <Layers className="w-5 h-5 mr-2" />
-                  Sub-Categories
-                </button>
-              </>
-            )}
+                {/* Admin Only - Categories and Sub-Categories */}
+                {currentUser?.role === 'admin' && (
+                  <>
+                    <button
+                      onClick={() => setShowCategoryModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                    >
+                      <Layers className="w-5 h-5 mr-2" />
+                      Categories
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowSubCategoryModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
+                    >
+                      <Layers className="w-5 h-5 mr-2" />
+                      Sub-Categories
+                    </button>
+                  </>
+                )}
 
-          {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
-              <><button
-                  onClick={() => setShowEquipmentModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-teal-500 to-green-600 text-white rounded-lg hover:from-teal-600 hover:to-green-700 transition shadow-md flex items-center"
-                >
-                  <Package className="w-5 h-5 mr-2" />
-                  Equipment
-                </button><button
-                  onClick={() => setShowAssetTagModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
-                >
-                    <Tag className="w-5 h-5 mr-2" />
-                    Asset Tags
-                  </button></>
-            </>
-          )}
-    </div>
+                {/* Admin/Support - Equipment and Asset Tags */}
+                {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
+                  <>
+                    <button
+                      onClick={() => setShowEquipmentModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-teal-500 to-green-600 text-white rounded-lg hover:from-teal-600 hover:to-green-700 transition shadow-md flex items-center"
+                    >
+                      <Package className="w-5 h-5 mr-2" />
+                      Equipment
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowAssetTagModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
+                    >
+                      <Tag className="w-5 h-5 mr-2" />
+                      Asset Tags
+                    </button>
+                  </>
+                )}
+              </div>
 
     {/* Search and Table Container */}
     <div className="bg-white rounded-xl shadow-md p-6">
