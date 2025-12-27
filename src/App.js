@@ -3099,12 +3099,29 @@ This report was generated from Johnny & Jugnu CMS.
                           <select
                             value={newComplaint.sub_category}
                             onChange={(e) => {
-                                  setNewComplaint({...newComplaint, sub_category: e.target.value, asset_tag: '',equipment: ''});
-                                  filterAssetTagsBySubCategory(e.target.value);
-                                if (newComplaint.department === 'Facility') {
+                              const selectedSubCat = e.target.value;
+                              
+                              console.log('=== SUB-CATEGORY SELECTED ===');
+                              console.log('Selected value:', selectedSubCat);
+                              console.log('Department:', newComplaint.department);
+                              
+                              // Update state
+                              setNewComplaint({
+                                ...newComplaint, 
+                                sub_category: selectedSubCat, 
+                                asset_tag: '',
+                                equipment: ''
+                              });
+                              
+                              // Filter asset tags (for all departments)
+                              filterAssetTagsBySubCategory(selectedSubCat);
+                              
+                              // Filter equipment (only for Facility department)
+                              if (newComplaint.department === 'Facility') {
+                                console.log('Filtering equipment for Facility department');
                                 filterEquipmentBySubCategory(selectedSubCat);
                               }
-                            }}  
+                            }}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
                           >
                             <option value="">Select Sub-Category (Optional)</option>
@@ -3117,6 +3134,7 @@ This report was generated from Johnny & Jugnu CMS.
                           )}
                         </div>
                       )}
+
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
