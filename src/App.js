@@ -2628,21 +2628,19 @@ This report was generated from Johnny & Jugnu CMS.
             )}
 
           {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
-              <button
-                onClick={() => setShowEquipmentModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-teal-500 to-green-600 text-white rounded-lg hover:from-teal-600 hover:to-green-700 transition shadow-md flex items-center"
-              >
-                <Package className="w-5 h-5 mr-2" />
-                Equipment
-              </button>
-
-              <button
-                onClick={() => setShowAssetTagModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
-              >
-                <Tag className="w-5 h-5 mr-2" />
-                Asset Tags
-              </button>
+              <><button
+                  onClick={() => setShowEquipmentModal(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-teal-500 to-green-600 text-white rounded-lg hover:from-teal-600 hover:to-green-700 transition shadow-md flex items-center"
+                >
+                  <Package className="w-5 h-5 mr-2" />
+                  Equipment
+                </button><button
+                  onClick={() => setShowAssetTagModal(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
+                >
+                    <Tag className="w-5 h-5 mr-2" />
+                    Asset Tags
+                  </button></>
             </>
           )}
     </div>
