@@ -50,6 +50,24 @@ const JohnnyCMS = () => {
     remarks: ''
   });
 
+      // Asset Tags States
+    const [assetTags, setAssetTags] = useState([]);
+    const [filteredAssetTags, setFilteredAssetTags] = useState([]);
+    const [showAssetTagModal, setShowAssetTagModal] = useState(false);
+    const [newAssetTag, setNewAssetTag] = useState({
+      asset_tag: '',
+      sub_category: '',
+      branch: '',
+      description: '',
+      status: 'active'
+    });
+    const [assetTagFilter, setAssetTagFilter] = useState({
+      branch: 'all',
+      sub_category: 'all',
+      status: 'all'
+    });
+    const [editingAssetTag, setEditingAssetTag] = useState(null);
+
   const rcaOptions = [
     'Technical Issue',
     'User Error',
@@ -216,6 +234,7 @@ const JohnnyCMS = () => {
       loadSubCategories();
       loadWarehouses();
       loadFeatures();
+      loadAssetTags();
       loadCurrentUserFeatures();
       if (currentUser?.role === 'admin') {
         loadUsers();
@@ -387,6 +406,167 @@ const JohnnyCMS = () => {
       console.error('Error loading sub-categories:', err);
     }
   };
+
+              // Load Asset Tags from Database
+              const loadAssetTags = async () => {
+                try {
+                console.log('Loading asset tags for user:', currentUser); // Debug
+                
+                let query = supabase
+                  .from('asset_tags')
+                  .select('*')
+                  .eq('status', 'active')
+                  .order('asset_tag', { ascending: true });
+                
+                // For regular users (not admin/support), filter by their branch
+                if (currentUser?.role !== 'admin' && currentUser?.role !== 'support') {
+                  if (!currentUser?.branch) {
+                    console.error('User has no branch assigned:', currentUser);
+                    setAssetTags([]);
+                    return;
+                  }
+                  console.log('Filtering by branch:', currentUser.branch); // Debug
+                  query = query.eq('branch', currentUser.branch);
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) throw error;
+                
+                console.log('Asset tags loaded:', data); // Debug
+                setAssetTags(data || []);
+                } catch (err) {
+                  console.error('Error loading asset tags:', err);
+                  setAssetTags([]);
+                }
+              };
+
+              // Filter Asset Tags by Sub-Category and Branch
+              const filterAssetTagsBySubCategory = (subCategory) => {
+            if (!subCategory) {
+              setFilteredAssetTags([]);
+              return;
+            }
+            
+            console.log('Filtering by sub-category:', subCategory); // Debug
+            console.log('Available asset tags:', assetTags); // Debug
+            
+            // Get current branch
+            const currentBranch = currentUser?.branch;
+            
+            // Filter asset tags by sub-category and branch
+            const filtered = assetTags.filter(tag => {
+              const matchesSubCategory = tag.sub_category === subCategory;
+              const matchesBranch = currentUser?.role === 'admin' || currentUser?.role === 'support' 
+                ? true // Admin/Support can see all branches
+                : tag.branch === currentBranch;
+              
+              return matchesSubCategory && matchesBranch;
+            });
+            
+            console.log('Filtered asset tags:', filtered); // Debug
+            
+            setFilteredAssetTags(filtered);
+          };
+
+          // Add or Update Asset Tag
+      const handleAddAssetTag = async () => {
+        if (!newAssetTag.asset_tag || !newAssetTag.sub_category || !newAssetTag.branch) {
+          setError('Asset tag, sub-category, and branch are required');
+          return;
+        }
+
+        try {
+          setLoading(true);
+          setError('');
+          
+          if (editingAssetTag) {
+            // Update existing asset tag
+            const { error } = await supabase
+              .from('asset_tags')
+              .update({
+                asset_tag: newAssetTag.asset_tag,
+                sub_category: newAssetTag.sub_category,
+                branch: newAssetTag.branch,
+                description: newAssetTag.description,
+                status: newAssetTag.status,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', editingAssetTag.id);
+            
+            if (error) throw error;
+            alert('Asset tag updated successfully!');
+          } else {
+            // Add new asset tag
+            const { error } = await supabase
+              .from('asset_tags')
+              .insert([{
+                ...newAssetTag,
+                created_by: currentUser?.username
+              }]);
+            
+            if (error) throw error;
+            alert('Asset tag added successfully!');
+          }
+          
+          await loadAssetTags();
+          setNewAssetTag({
+            asset_tag: '',
+            sub_category: '',
+            branch: '',
+            description: '',
+            status: 'active'
+          });
+          setEditingAssetTag(null);
+        } catch (err) {
+          console.error('Error saving asset tag:', err);
+          setError('Failed to save asset tag: ' + err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // Edit Asset Tag
+      const handleEditAssetTag = (tag) => {
+        setEditingAssetTag(tag);
+        setNewAssetTag({
+          asset_tag: tag.asset_tag,
+          sub_category: tag.sub_category,
+          branch: tag.branch,
+          description: tag.description || '',
+          status: tag.status
+        });
+        // Scroll to top of modal
+        const modalElement = document.querySelector('.overflow-y-auto');
+        if (modalElement) {
+          modalElement.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      };
+
+      // Delete Asset Tag
+      const handleDeleteAssetTag = async (tagId) => {
+        if (!window.confirm('Are you sure you want to delete this asset tag?')) return;
+
+        try {
+          setLoading(true);
+          const { error } = await supabase
+            .from('asset_tags')
+            .delete()
+            .eq('id', tagId);
+          
+          if (error) throw error;
+          
+          await loadAssetTags();
+          alert('Asset tag deleted successfully!');
+        } catch (err) {
+          console.error('Error deleting asset tag:', err);
+          setError('Failed to delete asset tag');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+
 
   const getSubCategoriesByCategory = (categoryId) => {
     if (!categoryId) return [];
@@ -1368,6 +1548,14 @@ const JohnnyCMS = () => {
     return true;
   });
 
+  const filteredAssetTagsForDisplay = assetTags.filter(tag => {
+     const matchesBranch = assetTagFilter.branch === 'all' || tag.branch === assetTagFilter.branch;
+     const matchesSubCategory = assetTagFilter.sub_category === 'all' || tag.sub_category === assetTagFilter.sub_category;
+     const matchesStatus = assetTagFilter.status === 'all' || tag.status === assetTagFilter.status;
+     
+     return matchesBranch && matchesSubCategory && matchesStatus;
+   });
+
   // Email Report Functions
   const generatePettyCashReportHTML = () => {
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -2268,25 +2456,35 @@ This report was generated from Johnny & Jugnu CMS.
         Add New
       </button>
       
-      {currentUser?.role === 'admin' && (
-        <>
-          <button
-            onClick={() => setShowCategoryModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
-          >
-            <Layers className="w-5 h-5 mr-2" />
-            Categories
-          </button>
-          
-          <button
-            onClick={() => setShowSubCategoryModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
-          >
-            <Layers className="w-5 h-5 mr-2" />
-            Sub-Categories
-          </button>
-        </>
-      )}
+            {currentUser?.role === 'admin' && (
+              <>
+                <button
+                  onClick={() => setShowCategoryModal(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                >
+                  <Layers className="w-5 h-5 mr-2" />
+                  Categories
+                </button>
+                
+                <button
+                  onClick={() => setShowSubCategoryModal(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
+                >
+                  <Layers className="w-5 h-5 mr-2" />
+                  Sub-Categories
+                </button>
+              </>
+            )}
+
+            {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
+              <button
+                onClick={() => setShowAssetTagModal(true)}
+                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
+              >
+                <Tag className="w-5 h-5 mr-2" />
+                Asset Tags
+              </button>
+            )}
     </div>
 
     {/* Search and Table Container */}
@@ -2721,9 +2919,12 @@ This report was generated from Johnny & Jugnu CMS.
                           </label>
                           <select
                             value={newComplaint.sub_category}
-                            onChange={(e) => setNewComplaint({ ...newComplaint, sub_category: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                          >
+                            onChange={(e) => {
+                                  setNewComplaint({...newComplaint, sub_category: e.target.value, asset_tag: ''});
+                                  filterAssetTagsBySubCategory(e.target.value);
+                                }}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                           >
                             <option value="">Select Sub-Category (Optional)</option>
                             {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).map((subCat) => (
                               <option key={subCat.id} value={subCat.name}>{subCat.name}</option>
@@ -2737,18 +2938,46 @@ This report was generated from Johnny & Jugnu CMS.
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Asset Tag Number *
+                          Asset Tag
+                          {newComplaint.sub_category && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({filteredAssetTags.length} available)
+                            </span>
+                          )}
                         </label>
-                        <input
-                          type="text"
-                          value={newComplaint.asset_tag}
-                          onChange={(e) => setNewComplaint({ ...newComplaint, asset_tag: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                          placeholder="Enter asset tag number (e.g., AST-2025-001)"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Required: Equipment identification number
-                        </p>
+                        {newComplaint.sub_category ? (
+                          filteredAssetTags.length > 0 ? (
+                            <select
+                              value={newComplaint.asset_tag}
+                              onChange={(e) => setNewComplaint({...newComplaint, asset_tag: e.target.value})}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                            >
+                              <option value="">Select Asset Tag</option>
+                              {filteredAssetTags.map((tag) => (
+                                <option key={tag.id} value={tag.asset_tag}>
+                                  {tag.asset_tag} {tag.description ? `- ${tag.description}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                              <p className="text-sm">No asset tags available for this sub-category in {currentUser?.branch}</p>
+                              <div className="mt-2">
+                                <input
+                                  type="text"
+                                  value={newComplaint.asset_tag}
+                                  onChange={(e) => setNewComplaint({...newComplaint, asset_tag: e.target.value})}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                                  placeholder="Enter asset tag manually"
+                                />
+                              </div>
+                            </div>
+                          )
+                        ) : (
+                          <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500">
+                            Please select a sub-category first
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -4305,6 +4534,360 @@ This report was generated from Johnny & Jugnu CMS.
             </div>
           </div>
         )}
+
+
+        {/* ASSET TAG MANAGEMENT MODAL */}
+          {showAssetTagModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-gray-800">
+                    <Tag className="inline w-5 h-5 mr-2" />
+                    Asset Tag/Code Management
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowAssetTagModal(false);
+                      setError('');
+                      setEditingAssetTag(null);
+                      setNewAssetTag({
+                        asset_tag: '',
+                        sub_category: '',
+                        branch: '',
+                        description: '',
+                        status: 'active'
+                      });
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                {/* Add New Asset Tag Form */}
+                <div className="bg-gradient-to-r from-cyan-50 to-blue-50 p-6 rounded-xl mb-6 border border-cyan-200">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <Plus className="w-5 h-5 mr-2 text-cyan-600" />
+                    {editingAssetTag ? 'Edit Asset Tag/Code' : 'Add New Asset Tag/Code'}
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    {/* Asset Tag/Code Input */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Asset Tag/Code *
+                        <span className="text-xs text-gray-500 ml-2">(Unique identifier)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newAssetTag.asset_tag}
+                        onChange={(e) => setNewAssetTag({...newAssetTag, asset_tag: e.target.value.toUpperCase()})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none"
+                        placeholder="e.g., IT-LAP-001"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Format: DEPT-TYPE-NUMBER</p>
+                    </div>
+
+                    {/* Branch Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Branch *
+                        <span className="text-xs text-gray-500 ml-2">(Location)</span>
+                      </label>
+                      <select
+                        value={newAssetTag.branch}
+                        onChange={(e) => setNewAssetTag({...newAssetTag, branch: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none"
+                      >
+                        <option value="">Select Branch</option>
+                        {warehouses.map(warehouse => (
+                          <option key={warehouse.id} value={warehouse.branch}>
+                            {warehouse.branch} - {warehouse.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Sub-Category Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sub-Category *
+                        <span className="text-xs text-gray-500 ml-2">(Asset type)</span>
+                      </label>
+                      <select
+                        value={newAssetTag.sub_category}
+                        onChange={(e) => setNewAssetTag({...newAssetTag, sub_category: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none"
+                      >
+                        <option value="">Select Sub-Category</option>
+                        {subCategories.map(cat => (
+                          <option key={cat.id} value={cat.name}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* Description */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                        <span className="text-xs text-gray-500 ml-2">(Optional details)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newAssetTag.description}
+                        onChange={(e) => setNewAssetTag({...newAssetTag, description: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none"
+                        placeholder="e.g., Dell Latitude 5420, 16GB RAM"
+                      />
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Status
+                      </label>
+                      <select
+                        value={newAssetTag.status}
+                        onChange={(e) => setNewAssetTag({...newAssetTag, status: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="maintenance">Under Maintenance</option>
+                        <option value="retired">Retired</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setNewAssetTag({
+                          asset_tag: '',
+                          sub_category: '',
+                          branch: '',
+                          description: '',
+                          status: 'active'
+                        });
+                        setEditingAssetTag(null);
+                      }}
+                      className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Clear Form
+                    </button>
+                    <button
+                      onClick={handleAddAssetTag}
+                      disabled={loading}
+                      className="flex-1 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition flex items-center justify-center shadow-md"
+                    >
+                      {loading ? (
+                        <Loader className="animate-spin w-5 h-5" />
+                      ) : (
+                        <>
+                          {editingAssetTag ? <Edit className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+                          {editingAssetTag ? 'Update Asset Tag' : 'Add Asset Tag'}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter Section */}
+                <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Filter Asset Tags</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Branch</label>
+                      <select
+                        value={assetTagFilter.branch}
+                        onChange={(e) => setAssetTagFilter({...assetTagFilter, branch: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none text-sm"
+                      >
+                        <option value="all">All Branches</option>
+                        {[...new Set(assetTags.map(t => t.branch))].sort().map(branch => (
+                          <option key={branch} value={branch}>{branch}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Sub-Category</label>
+                      <select
+                        value={assetTagFilter.sub_category}
+                        onChange={(e) => setAssetTagFilter({...assetTagFilter, sub_category: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none text-sm"
+                      >
+                        <option value="all">All Sub-Categories</option>
+                        {[...new Set(assetTags.map(t => t.sub_category))].sort().map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Status</label>
+                      <select
+                        value={assetTagFilter.status}
+                        onChange={(e) => setAssetTagFilter({...assetTagFilter, status: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none text-sm"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="maintenance">Under Maintenance</option>
+                        <option value="retired">Retired</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Existing Asset Tags List */}
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-sm font-semibold text-gray-700">
+                      Asset Tags List 
+                      <span className="ml-2 text-cyan-600">
+                        ({filteredAssetTagsForDisplay.length} of {assetTags.length})
+                      </span>
+                    </h4>
+                    <button
+                      onClick={() => setAssetTagFilter({ branch: 'all', sub_category: 'all', status: 'all' })}
+                      className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+
+                  {filteredAssetTagsForDisplay.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg">
+                      <Tag className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-500">No asset tags found</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        {assetTags.length === 0 ? 'Add your first asset tag above' : 'Try adjusting your filters'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto max-h-96 border border-gray-200 rounded-lg">
+                      <table className="w-full">
+                        <thead className="bg-gray-100 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Asset Tag/Code</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Branch</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Sub-Category</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Description</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Created</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white">
+                          {filteredAssetTagsForDisplay.map((tag) => (
+                            <tr key={tag.id} className="border-b hover:bg-gray-50 transition">
+                              <td className="px-4 py-3">
+                                <span className="text-sm font-mono font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                  {tag.asset_tag}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">{tag.branch}</td>
+                              <td className="px-4 py-3">
+                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold">
+                                  {tag.sub_category}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
+                                {tag.description || '-'}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  tag.status === 'active' ? 'bg-green-100 text-green-700' :
+                                  tag.status === 'maintenance' ? 'bg-yellow-100 text-yellow-700' :
+                                  tag.status === 'retired' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {tag.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-xs text-gray-500">
+                                {new Date(tag.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleEditAssetTag(tag)}
+                                    className="text-blue-600 hover:text-blue-800"
+                                    title="Edit"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteAssetTag(tag.id)}
+                                    className="text-red-600 hover:text-red-800"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Summary Stats */}
+                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-xs text-blue-600 font-medium">Total Assets</p>
+                    <p className="text-2xl font-bold text-blue-700">{assetTags.length}</p>
+                  </div>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-xs text-green-600 font-medium">Active</p>
+                    <p className="text-2xl font-bold text-green-700">
+                      {assetTags.filter(t => t.status === 'active').length}
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 p-3 rounded-lg">
+                    <p className="text-xs text-yellow-600 font-medium">Maintenance</p>
+                    <p className="text-2xl font-bold text-yellow-700">
+                      {assetTags.filter(t => t.status === 'maintenance').length}
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 p-3 rounded-lg">
+                    <p className="text-xs text-purple-600 font-medium">Branches</p>
+                    <p className="text-2xl font-bold text-purple-700">
+                      {[...new Set(assetTags.map(t => t.branch))].length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Close Button */}
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setShowAssetTagModal(false);
+                      setError('');
+                      setEditingAssetTag(null);
+                      setNewAssetTag({
+                        asset_tag: '',
+                        sub_category: '',
+                        branch: '',
+                        description: '',
+                        status: 'active'
+                      });
+                    }}
+                    className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
     </div>
   );
 };

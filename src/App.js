@@ -92,6 +92,7 @@ const JohnnyCMS = () => {
     priority: 'Medium',
     assigned_to: '',
     asset_tag: ''
+    equipment: ''
   });
   const [warehouses, setWarehouses] = useState([]);
 
@@ -102,7 +103,22 @@ const JohnnyCMS = () => {
     status: 'all',
     priority: 'all'
   });
-
+    // Equipment States (add after assetTags states)
+  const [equipment, setEquipment] = useState([]);
+  const [filteredEquipment, setFilteredEquipment] = useState([]);
+  const [showEquipmentModal, setShowEquipmentModal] = useState(false);
+  const [newEquipment, setNewEquipment] = useState({
+    name: '',
+    sub_category: '',
+    department: 'Facility',
+    description: '',
+    status: 'active'
+  });
+  const [equipmentFilter, setEquipmentFilter] = useState({
+    sub_category: 'all',
+    status: 'all'
+  });
+  const [editingEquipment, setEditingEquipment] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showPettyCashModal, setShowPettyCashModal] = useState(false);
@@ -235,6 +251,7 @@ const JohnnyCMS = () => {
       loadWarehouses();
       loadFeatures();
       loadAssetTags();
+      loadEquipment();
       loadCurrentUserFeatures();
       if (currentUser?.role === 'admin') {
         loadUsers();
@@ -565,7 +582,141 @@ const JohnnyCMS = () => {
           setLoading(false);
         }
       };
+                    // Load Equipment from Database
+            const loadEquipment = async () => {
+              try {
+                console.log('Loading equipment...'); // Debug
+                
+                const { data, error } = await supabase
+                  .from('equipment')
+                  .select('*')
+                  .eq('status', 'active')
+                  .eq('department', 'Facility')
+                  .order('name', { ascending: true });
+                
+                if (error) throw error;
+                
+                console.log('Equipment loaded:', data); // Debug
+                setEquipment(data || []);
+              } catch (err) {
+                console.error('Error loading equipment:', err);
+                setEquipment([]);
+              }
+            };
 
+            // Filter Equipment by Sub-Category
+            const filterEquipmentBySubCategory = (subCategory) => {
+              if (!subCategory) {
+                setFilteredEquipment([]);
+                return;
+              }
+              
+              console.log('Filtering equipment by sub-category:', subCategory); // Debug
+              console.log('Available equipment:', equipment); // Debug
+              
+              const filtered = equipment.filter(eq => eq.sub_category === subCategory);
+              
+              console.log('Filtered equipment:', filtered); // Debug
+              
+              setFilteredEquipment(filtered);
+            };
+
+            // Add or Update Equipment
+            const handleAddEquipment = async () => {
+              if (!newEquipment.name || !newEquipment.sub_category) {
+                setError('Equipment name and sub-category are required');
+                return;
+              }
+
+              try {
+                setLoading(true);
+                setError('');
+                
+                if (editingEquipment) {
+                  // Update existing equipment
+                  const { error } = await supabase
+                    .from('equipment')
+                    .update({
+                      name: newEquipment.name,
+                      sub_category: newEquipment.sub_category,
+                      department: newEquipment.department,
+                      description: newEquipment.description,
+                      status: newEquipment.status,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', editingEquipment.id);
+                  
+                  if (error) throw error;
+                  alert('Equipment updated successfully!');
+                } else {
+                  // Add new equipment
+                  const { error } = await supabase
+                    .from('equipment')
+                    .insert([{
+                      ...newEquipment,
+                      created_by: currentUser?.username
+                    }]);
+                  
+                  if (error) throw error;
+                  alert('Equipment added successfully!');
+                }
+                
+                await loadEquipment();
+                setNewEquipment({
+                  name: '',
+                  sub_category: '',
+                  department: 'Facility',
+                  description: '',
+                  status: 'active'
+                });
+                setEditingEquipment(null);
+              } catch (err) {
+                console.error('Error saving equipment:', err);
+                setError('Failed to save equipment: ' + err.message);
+              } finally {
+                setLoading(false);
+              }
+            };
+
+            // Edit Equipment
+            const handleEditEquipment = (eq) => {
+              setEditingEquipment(eq);
+              setNewEquipment({
+                name: eq.name,
+                sub_category: eq.sub_category,
+                department: eq.department,
+                description: eq.description || '',
+                status: eq.status
+              });
+              // Scroll to top of modal
+              const modalElement = document.querySelector('.overflow-y-auto');
+              if (modalElement) {
+                modalElement.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            };
+
+            // Delete Equipment
+            const handleDeleteEquipment = async (equipmentId) => {
+              if (!window.confirm('Are you sure you want to delete this equipment?')) return;
+
+              try {
+                setLoading(true);
+                const { error } = await supabase
+                  .from('equipment')
+                  .delete()
+                  .eq('id', equipmentId);
+                
+                if (error) throw error;
+                
+                await loadEquipment();
+                alert('Equipment deleted successfully!');
+              } catch (err) {
+                console.error('Error deleting equipment:', err);
+                setError('Failed to delete equipment');
+              } finally {
+                setLoading(false);
+              }
+            };
 
 
   const getSubCategoriesByCategory = (categoryId) => {
@@ -2476,7 +2627,15 @@ This report was generated from Johnny & Jugnu CMS.
               </>
             )}
 
-            {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
+          {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
+              <button
+                onClick={() => setShowEquipmentModal(true)}
+                className="px-6 py-3 bg-gradient-to-r from-teal-500 to-green-600 text-white rounded-lg hover:from-teal-600 hover:to-green-700 transition shadow-md flex items-center"
+              >
+                <Package className="w-5 h-5 mr-2" />
+                Equipment
+              </button>
+
               <button
                 onClick={() => setShowAssetTagModal(true)}
                 className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
@@ -2484,7 +2643,8 @@ This report was generated from Johnny & Jugnu CMS.
                 <Tag className="w-5 h-5 mr-2" />
                 Asset Tags
               </button>
-            )}
+            </>
+          )}
     </div>
 
     {/* Search and Table Container */}
@@ -2920,11 +3080,14 @@ This report was generated from Johnny & Jugnu CMS.
                           <select
                             value={newComplaint.sub_category}
                             onChange={(e) => {
-                                  setNewComplaint({...newComplaint, sub_category: e.target.value, asset_tag: ''});
+                                  setNewComplaint({...newComplaint, sub_category: e.target.value, asset_tag: '',equipment: ''});
                                   filterAssetTagsBySubCategory(e.target.value);
-                                }}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                           >
+                                if (newComplaint.department === 'Facility') {
+                                filterEquipmentBySubCategory(selectedSubCat);
+                              }
+                            }}  
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                          >
                             <option value="">Select Sub-Category (Optional)</option>
                             {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).map((subCat) => (
                               <option key={subCat.id} value={subCat.name}>{subCat.name}</option>
@@ -2978,7 +3141,53 @@ This report was generated from Johnny & Jugnu CMS.
                             Please select a sub-category first
                           </div>
                         )}
-                      </div>
+                      </div>                      
+                      {/* Equipment Dropdown - Only for Facility Department */}
+                      {newComplaint.department === 'Facility' && newComplaint.sub_category && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Equipment/Work Type *
+                            {newComplaint.sub_category && (
+                              <span className="text-xs text-gray-500 ml-2">
+                                ({filteredEquipment.length} available)
+                              </span>
+                            )}
+                          </label>
+                          {filteredEquipment.length > 0 ? (
+                            <select
+                              value={newComplaint.equipment}
+                              onChange={(e) => setNewComplaint({...newComplaint, equipment: e.target.value})}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                            >
+                              <option value="">Select Equipment/Work Type</option>
+                              {filteredEquipment.map((eq) => (
+                                <option key={eq.id} value={eq.name}>
+                                  {eq.name} {eq.description ? `- ${eq.description}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                              <p className="text-sm text-gray-500 mb-2">
+                                No equipment types available for "{newComplaint.sub_category}"
+                              </p>
+                              <div className="mt-2">
+                                <input
+                                  type="text"
+                                  value={newComplaint.equipment}
+                                  onChange={(e) => setNewComplaint({...newComplaint, equipment: e.target.value})}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                                  placeholder="Enter equipment/work type manually"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            Select the type of equipment or facility work required
+                          </p>
+                        </div>
+                      )}
+
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Priority *</label>
