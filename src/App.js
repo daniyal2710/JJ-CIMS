@@ -91,7 +91,7 @@ const JohnnyCMS = () => {
     comments: '',
     priority: 'Medium',
     assigned_to: '',
-    asset_tag: ''
+    asset_tag: '',
     equipment: ''
   });
   const [warehouses, setWarehouses] = useState([]);
