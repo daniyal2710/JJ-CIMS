@@ -68,22 +68,6 @@ const JohnnyCMS = () => {
     });
     const [editingAssetTag, setEditingAssetTag] = useState(null);
 
-  const rcaOptions = [
-    'Technical Issue',
-    'User Error',
-    'Hardware Failure',
-    'Software Bug',
-    'Network Problem',
-    'Configuration Error',
-    'Facility Required',
-    'Third Party Issue',
-    'Power Failure',
-    'Environmental Factor',
-    'Training Gap',
-    'Process Issue',
-    'Other'
-  ];
-
   const [newComplaint, setNewComplaint] = useState({
     department: 'IT',
     category: '',
@@ -91,7 +75,8 @@ const JohnnyCMS = () => {
     comments: '',
     priority: 'Medium',
     assigned_to: '',
-    asset_tag: ''
+    asset_tag: '',
+    equipment: ''
   });
   const [warehouses, setWarehouses] = useState([]);
 
@@ -102,7 +87,37 @@ const JohnnyCMS = () => {
     status: 'all',
     priority: 'all'
   });
-
+    // Equipment States (add after assetTags states)
+  const [equipment, setEquipment] = useState([]);
+  const [filteredEquipment, setFilteredEquipment] = useState([]);
+  const [showEquipmentModal, setShowEquipmentModal] = useState(false);
+  const [newEquipment, setNewEquipment] = useState({
+    name: '',
+    sub_category: '',
+    department: 'Facility',
+    description: '',
+    status: 'active'
+  });
+  const [equipmentFilter, setEquipmentFilter] = useState({
+    sub_category: 'all',
+    status: 'all'
+  });
+  // RCA Options States (add after equipment states)
+const [rcaOptions, setRcaOptions] = useState([]);
+const [filteredRcaOptions, setFilteredRcaOptions] = useState([]);
+const [showRcaModal, setShowRcaModal] = useState(false);
+const [newRca, setNewRca] = useState({
+  rca_name: '',
+  department: 'IT',
+  description: '',
+  status: 'active'
+});
+const [rcaFilter, setRcaFilter] = useState({
+  department: 'all',
+  status: 'all'
+});
+const [editingRca, setEditingRca] = useState(null);
+  const [editingEquipment, setEditingEquipment] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showPettyCashModal, setShowPettyCashModal] = useState(false);
@@ -235,6 +250,7 @@ const JohnnyCMS = () => {
       loadWarehouses();
       loadFeatures();
       loadAssetTags();
+      loadEquipment();
       loadCurrentUserFeatures();
       if (currentUser?.role === 'admin') {
         loadUsers();
@@ -565,7 +581,141 @@ const JohnnyCMS = () => {
           setLoading(false);
         }
       };
+                    // Load Equipment from Database
+            const loadEquipment = async () => {
+              try {
+                console.log('Loading equipment...'); // Debug
+                
+                const { data, error } = await supabase
+                  .from('equipment')
+                  .select('*')
+                  .eq('status', 'active')
+                  .eq('department', 'Facility')
+                  .order('name', { ascending: true });
+                
+                if (error) throw error;
+                
+                console.log('Equipment loaded:', data); // Debug
+                setEquipment(data || []);
+              } catch (err) {
+                console.error('Error loading equipment:', err);
+                setEquipment([]);
+              }
+            };
 
+            // Filter Equipment by Sub-Category
+            const filterEquipmentBySubCategory = (subCategory) => {
+              if (!subCategory) {
+                setFilteredEquipment([]);
+                return;
+              }
+              
+              console.log('Filtering equipment by sub-category:', subCategory); // Debug
+              console.log('Available equipment:', equipment); // Debug
+              
+              const filtered = equipment.filter(eq => eq.sub_category === subCategory);
+              
+              console.log('Filtered equipment:', filtered); // Debug
+              
+              setFilteredEquipment(filtered);
+            };
+
+            // Add or Update Equipment
+            const handleAddEquipment = async () => {
+              if (!newEquipment.name || !newEquipment.sub_category) {
+                setError('Equipment name and sub-category are required');
+                return;
+              }
+
+              try {
+                setLoading(true);
+                setError('');
+                
+                if (editingEquipment) {
+                  // Update existing equipment
+                  const { error } = await supabase
+                    .from('equipment')
+                    .update({
+                      name: newEquipment.name,
+                      sub_category: newEquipment.sub_category,
+                      department: newEquipment.department,
+                      description: newEquipment.description,
+                      status: newEquipment.status,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', editingEquipment.id);
+                  
+                  if (error) throw error;
+                  alert('Equipment updated successfully!');
+                } else {
+                  // Add new equipment
+                  const { error } = await supabase
+                    .from('equipment')
+                    .insert([{
+                      ...newEquipment,
+                      created_by: currentUser?.username
+                    }]);
+                  
+                  if (error) throw error;
+                  alert('Equipment added successfully!');
+                }
+                
+                await loadEquipment();
+                setNewEquipment({
+                  name: '',
+                  sub_category: '',
+                  department: 'Facility',
+                  description: '',
+                  status: 'active'
+                });
+                setEditingEquipment(null);
+              } catch (err) {
+                console.error('Error saving equipment:', err);
+                setError('Failed to save equipment: ' + err.message);
+              } finally {
+                setLoading(false);
+              }
+            };
+
+            // Edit Equipment
+            const handleEditEquipment = (eq) => {
+              setEditingEquipment(eq);
+              setNewEquipment({
+                name: eq.name,
+                sub_category: eq.sub_category,
+                department: eq.department,
+                description: eq.description || '',
+                status: eq.status
+              });
+              // Scroll to top of modal
+              const modalElement = document.querySelector('.overflow-y-auto');
+              if (modalElement) {
+                modalElement.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            };
+
+            // Delete Equipment
+            const handleDeleteEquipment = async (equipmentId) => {
+              if (!window.confirm('Are you sure you want to delete this equipment?')) return;
+
+              try {
+                setLoading(true);
+                const { error } = await supabase
+                  .from('equipment')
+                  .delete()
+                  .eq('id', equipmentId);
+                
+                if (error) throw error;
+                
+                await loadEquipment();
+                alert('Equipment deleted successfully!');
+              } catch (err) {
+                console.error('Error deleting equipment:', err);
+                setError('Failed to delete equipment');
+              } finally {
+                setLoading(false);
+              }
+            };
 
 
   const getSubCategoriesByCategory = (categoryId) => {
@@ -726,56 +876,71 @@ const JohnnyCMS = () => {
   };
 
   const handleAddComplaint = async () => {
-    if (!newComplaint.category || !newComplaint.comments || !newComplaint.asset_tag) {
-      setError('Please fill in all required fields including Asset Tag');
-      return;
-    }
+  // Update validation for Facility department
+  if (!newComplaint.category || !newComplaint.comments) {
+    setError('Please fill in all required fields');
+    return;
+  }
 
-    try {
-      setLoading(true);
-      setError('');
+  // Validate equipment for Facility department
+  if (newComplaint.department === 'Facility' && newComplaint.sub_category && !newComplaint.equipment) {
+    setError('Please select equipment/work type for Facility complaints');
+    return;
+  }
 
-      const complaintNumber = await generateComplaintNumber();
+  // Validate asset_tag for IT department
+  if (newComplaint.department === 'IT' && !newComplaint.asset_tag) {
+    setError('Please fill in Asset Tag for IT complaints');
+    return;
+  }
 
-      const { error } = await supabase
-        .from('complaints')
-        .insert([{
-          complaint_number: complaintNumber,
-          department: newComplaint.department,
-          category: newComplaint.category,
-          sub_category: newComplaint.sub_category || null,  // ADD THIS LINE
-          comments: newComplaint.comments,
-          priority: newComplaint.priority,
-          status: 'Open',
-          branch: currentUser?.branch || 'Unknown',
-          assigned_to: newComplaint.assigned_to || null,
-          asset_tag: newComplaint.asset_tag,
-          created_by: currentUser?.username || 'unknown'
-        }])
-        .select();
+  try {
+    setLoading(true);
+    setError('');
 
-      if (error) throw error;
+    const complaintNumber = await generateComplaintNumber();
 
-      await loadComplaints();
-      setNewComplaint({
-        department: 'IT',
-        category: '',
-        sub_category: '',  // ADD THIS LINE
-        comments: '',
-        priority: 'Medium',
-        assigned_to: '',
-        asset_tag: ''
-      });
-      setCurrentView('complaints');
+    const { error } = await supabase
+      .from('complaints')
+      .insert([{
+        complaint_number: complaintNumber,
+        department: newComplaint.department,
+        category: newComplaint.category,
+        sub_category: newComplaint.sub_category || null,
+        comments: newComplaint.comments,
+        priority: newComplaint.priority,
+        status: 'Open',
+        branch: currentUser?.branch || 'Unknown',
+        assigned_to: newComplaint.assigned_to || null,
+        asset_tag: newComplaint.asset_tag || null,
+        equipment: newComplaint.equipment || null,  // ← ADD THIS LINE
+        created_by: currentUser?.username || 'unknown'
+      }])
+      .select();
 
-      alert(`Complaint created successfully!\nComplaint Number: ${complaintNumber}`);
-    } catch (err) {
-      console.error('Error adding complaint:', err);
-      setError('Failed to add complaint');
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (error) throw error;
+
+    await loadComplaints();
+    setNewComplaint({
+      department: 'IT',
+      category: '',
+      sub_category: '',
+      comments: '',
+      priority: 'Medium',
+      assigned_to: '',
+      asset_tag: '',
+      equipment: ''  // ← RESET EQUIPMENT
+    });
+    setCurrentView('complaints');
+
+    alert(`Complaint created successfully!\nComplaint Number: ${complaintNumber}`);
+  } catch (err) {
+    console.error('Error adding complaint:', err);
+    setError('Failed to add complaint');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleStatusChange = async (complaintId, newStatus) => {
     const currentComplaint = complaints.find(c => c.id === complaintId);
@@ -2435,57 +2600,70 @@ This report was generated from Johnny & Jugnu CMS.
       </div>
     </div>
 
-    {/* Action Buttons */}
-    <div className="flex gap-3 mb-6">
-      <button
-        onClick={() => {
-          setNewComplaint({
-            department: 'IT',
-            category: '',
-            sub_category: '',
-            comments: '',
-            priority: 'Medium',
-            assigned_to: '',
-            asset_tag: ''
-          });
-          setCurrentView('add');
-        }}
-        className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md flex items-center"
-      >
-        <Plus className="w-5 h-5 mr-2" />
-        Add New
-      </button>
-      
-            {currentUser?.role === 'admin' && (
-              <>
+                  {/* Action Buttons */}
+              <div className="flex gap-3 mb-6">
                 <button
-                  onClick={() => setShowCategoryModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                  onClick={() => {
+                    setNewComplaint({
+                      department: 'IT',
+                      category: '',
+                      sub_category: '',
+                      comments: '',
+                      priority: 'Medium',
+                      assigned_to: '',
+                      asset_tag: '',
+                      equipment: ''
+                    });
+                    setCurrentView('add');
+                  }}
+                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition shadow-md flex items-center"
                 >
-                  <Layers className="w-5 h-5 mr-2" />
-                  Categories
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add New
                 </button>
                 
-                <button
-                  onClick={() => setShowSubCategoryModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
-                >
-                  <Layers className="w-5 h-5 mr-2" />
-                  Sub-Categories
-                </button>
-              </>
-            )}
+                {/* Admin Only - Categories and Sub-Categories */}
+                {currentUser?.role === 'admin' && (
+                  <>
+                    <button
+                      onClick={() => setShowCategoryModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition shadow-md flex items-center"
+                    >
+                      <Layers className="w-5 h-5 mr-2" />
+                      Categories
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowSubCategoryModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg hover:from-indigo-600 hover:to-blue-700 transition shadow-md flex items-center"
+                    >
+                      <Layers className="w-5 h-5 mr-2" />
+                      Sub-Categories
+                    </button>
+                  </>
+                )}
 
-            {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
-              <button
-                onClick={() => setShowAssetTagModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
-              >
-                <Tag className="w-5 h-5 mr-2" />
-                Asset Tags
-              </button>
-            )}
-    </div>
+                {/* Admin/Support - Equipment and Asset Tags */}
+                {(currentUser?.role === 'admin' || currentUser?.role === 'support') && (
+                  <>
+                    <button
+                      onClick={() => setShowEquipmentModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-teal-500 to-green-600 text-white rounded-lg hover:from-teal-600 hover:to-green-700 transition shadow-md flex items-center"
+                    >
+                      <Package className="w-5 h-5 mr-2" />
+                      Equipment
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowAssetTagModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition shadow-md flex items-center"
+                    >
+                      <Tag className="w-5 h-5 mr-2" />
+                      Asset Tags
+                    </button>
+                  </>
+                )}
+              </div>
 
     {/* Search and Table Container */}
     <div className="bg-white rounded-xl shadow-md p-6">
@@ -2920,11 +3098,31 @@ This report was generated from Johnny & Jugnu CMS.
                           <select
                             value={newComplaint.sub_category}
                             onChange={(e) => {
-                                  setNewComplaint({...newComplaint, sub_category: e.target.value, asset_tag: ''});
-                                  filterAssetTagsBySubCategory(e.target.value);
-                                }}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                           >
+                              const selectedSubCat = e.target.value;
+                              
+                              console.log('=== SUB-CATEGORY SELECTED ===');
+                              console.log('Selected value:', selectedSubCat);
+                              console.log('Department:', newComplaint.department);
+                              
+                              // Update state
+                              setNewComplaint({
+                                ...newComplaint, 
+                                sub_category: selectedSubCat, 
+                                asset_tag: '',
+                                equipment: ''
+                              });
+                              
+                              // Filter asset tags (for all departments)
+                              filterAssetTagsBySubCategory(selectedSubCat);
+                              
+                              // Filter equipment (only for Facility department)
+                              if (newComplaint.department === 'Facility') {
+                                console.log('Filtering equipment for Facility department');
+                                filterEquipmentBySubCategory(selectedSubCat);
+                              }
+                            }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                          >
                             <option value="">Select Sub-Category (Optional)</option>
                             {getSubCategoriesByCategoryName(newComplaint.category, newComplaint.department).map((subCat) => (
                               <option key={subCat.id} value={subCat.name}>{subCat.name}</option>
@@ -2935,6 +3133,7 @@ This report was generated from Johnny & Jugnu CMS.
                           )}
                         </div>
                       )}
+
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2978,7 +3177,53 @@ This report was generated from Johnny & Jugnu CMS.
                             Please select a sub-category first
                           </div>
                         )}
-                      </div>
+                      </div>                      
+                      {/* Equipment Dropdown - Only for Facility Department */}
+                      {newComplaint.department === 'Facility' && newComplaint.sub_category && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Equipment/Work Type *
+                            {newComplaint.sub_category && (
+                              <span className="text-xs text-gray-500 ml-2">
+                                ({filteredEquipment.length} available)
+                              </span>
+                            )}
+                          </label>
+                          {filteredEquipment.length > 0 ? (
+                            <select
+                              value={newComplaint.equipment}
+                              onChange={(e) => setNewComplaint({...newComplaint, equipment: e.target.value})}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                            >
+                              <option value="">Select Equipment/Work Type</option>
+                              {filteredEquipment.map((eq) => (
+                                <option key={eq.id} value={eq.name}>
+                                  {eq.name} {eq.description ? `- ${eq.description}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                              <p className="text-sm text-gray-500 mb-2">
+                                No equipment types available for "{newComplaint.sub_category}"
+                              </p>
+                              <div className="mt-2">
+                                <input
+                                  type="text"
+                                  value={newComplaint.equipment}
+                                  onChange={(e) => setNewComplaint({...newComplaint, equipment: e.target.value})}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                                  placeholder="Enter equipment/work type manually"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            Select the type of equipment or facility work required
+                          </p>
+                        </div>
+                      )}
+
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Priority *</label>
@@ -4888,6 +5133,325 @@ This report was generated from Johnny & Jugnu CMS.
               </div>
             </div>
           )}
+                      {/* EQUIPMENT MANAGEMENT MODAL */}
+                      {showEquipmentModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                          <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-6">
+                              <h3 className="text-xl font-bold text-gray-800">
+                                <Package className="inline w-5 h-5 mr-2" />
+                                Equipment/Work Type Management - Facility Department
+                              </h3>
+                              <button
+                                onClick={() => {
+                                  setShowEquipmentModal(false);
+                                  setError('');
+                                  setEditingEquipment(null);
+                                  setNewEquipment({
+                                    name: '',
+                                    sub_category: '',
+                                    department: 'Facility',
+                                    description: '',
+                                    status: 'active'
+                                  });
+                                }}
+                                className="text-gray-500 hover:text-gray-700"
+                              >
+                                <X className="w-6 h-6" />
+                              </button>
+                            </div>
+
+                            {/* Add New Equipment Form */}
+                            <div className="bg-gradient-to-r from-teal-50 to-green-50 p-6 rounded-xl mb-6 border border-teal-200">
+                              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                <Plus className="w-5 h-5 mr-2 text-teal-600" />
+                                {editingEquipment ? 'Edit Equipment Type' : 'Add New Equipment Type'}
+                              </h4>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                {/* Equipment Name */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Equipment/Work Type Name *
+                                    <span className="text-xs text-gray-500 ml-2">(e.g., Door Lock Repair)</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={newEquipment.name}
+                                    onChange={(e) => setNewEquipment({...newEquipment, name: e.target.value})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                                    placeholder="e.g., Door Lock Repair, Plumbing Work"
+                                  />
+                                </div>
+
+                                {/* Sub-Category Selection */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Sub-Category *
+                                    <span className="text-xs text-gray-500 ml-2">(Link to sub-category)</span>
+                                  </label>
+                                  <select
+                                    value={newEquipment.sub_category}
+                                    onChange={(e) => setNewEquipment({...newEquipment, sub_category: e.target.value})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                                  >
+                                    <option value="">Select Sub-Category</option>
+                                    {subCategories
+                                      .filter(sc => sc.department === 'Facility')
+                                      .map(cat => (
+                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                      ))
+                                    }
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                {/* Description */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Description
+                                    <span className="text-xs text-gray-500 ml-2">(Optional details)</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={newEquipment.description}
+                                    onChange={(e) => setNewEquipment({...newEquipment, description: e.target.value})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                                    placeholder="e.g., General repair and maintenance work"
+                                  />
+                                </div>
+
+                                {/* Status */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Status
+                                  </label>
+                                  <select
+                                    value={newEquipment.status}
+                                    onChange={(e) => setNewEquipment({...newEquipment, status: e.target.value})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                                  >
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => {
+                                    setNewEquipment({
+                                      name: '',
+                                      sub_category: '',
+                                      department: 'Facility',
+                                      description: '',
+                                      status: 'active'
+                                    });
+                                    setEditingEquipment(null);
+                                  }}
+                                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                                >
+                                  Clear Form
+                                </button>
+                                <button
+                                  onClick={handleAddEquipment}
+                                  disabled={loading}
+                                  className="flex-1 px-6 py-2 bg-gradient-to-r from-teal-500 to-green-600 text-white rounded-lg hover:from-teal-600 hover:to-green-700 transition flex items-center justify-center shadow-md"
+                                >
+                                  {loading ? (
+                                    <Loader className="animate-spin w-5 h-5" />
+                                  ) : (
+                                    <>
+                                      {editingEquipment ? <Edit className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+                                      {editingEquipment ? 'Update Equipment' : 'Add Equipment'}
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Filter Section */}
+                            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">Filter Equipment</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Sub-Category</label>
+                                  <select
+                                    value={equipmentFilter.sub_category}
+                                    onChange={(e) => setEquipmentFilter({...equipmentFilter, sub_category: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                                  >
+                                    <option value="all">All Sub-Categories</option>
+                                    {[...new Set(equipment.map(t => t.sub_category))].sort().map(cat => (
+                                      <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Status</label>
+                                  <select
+                                    value={equipmentFilter.status}
+                                    onChange={(e) => setEquipmentFilter({...equipmentFilter, status: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                                  >
+                                    <option value="all">All Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Existing Equipment List */}
+                            <div>
+                              <div className="flex justify-between items-center mb-4">
+                                <h4 className="text-sm font-semibold text-gray-700">
+                                  Equipment List 
+                                  <span className="ml-2 text-teal-600">
+                                    ({equipment.filter(eq => {
+                                      const matchesSubCat = equipmentFilter.sub_category === 'all' || eq.sub_category === equipmentFilter.sub_category;
+                                      const matchesStatus = equipmentFilter.status === 'all' || eq.status === equipmentFilter.status;
+                                      return matchesSubCat && matchesStatus;
+                                    }).length} of {equipment.length})
+                                  </span>
+                                </h4>
+                                <button
+                                  onClick={() => setEquipmentFilter({ sub_category: 'all', status: 'all' })}
+                                  className="text-xs text-teal-600 hover:text-teal-700 font-medium"
+                                >
+                                  Clear Filters
+                                </button>
+                              </div>
+
+                              {equipment.length === 0 ? (
+                                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                                  <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                  <p className="text-gray-500">No equipment types found</p>
+                                  <p className="text-sm text-gray-400 mt-1">Add your first equipment type above</p>
+                                </div>
+                              ) : (
+                                <div className="overflow-x-auto max-h-96 border border-gray-200 rounded-lg">
+                                  <table className="w-full">
+                                    <thead className="bg-gray-100 sticky top-0">
+                                      <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Equipment/Work Type</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Sub-Category</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Description</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Created</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Actions</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="bg-white">
+                                      {equipment
+                                        .filter(eq => {
+                                          const matchesSubCat = equipmentFilter.sub_category === 'all' || eq.sub_category === equipmentFilter.sub_category;
+                                          const matchesStatus = equipmentFilter.status === 'all' || eq.status === equipmentFilter.status;
+                                          return matchesSubCat && matchesStatus;
+                                        })
+                                        .map((eq) => (
+                                          <tr key={eq.id} className="border-b hover:bg-gray-50 transition">
+                                            <td className="px-4 py-3">
+                                              <span className="text-sm font-semibold text-teal-600 bg-teal-50 px-2 py-1 rounded">
+                                                {eq.name}
+                                              </span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold">
+                                                {eq.sub_category}
+                                              </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
+                                              {eq.description || '-'}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                eq.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                                              }`}>
+                                                {eq.status}
+                                              </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-xs text-gray-500">
+                                              {new Date(eq.created_at).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                              <div className="flex gap-2">
+                                                <button
+                                                  onClick={() => handleEditEquipment(eq)}
+                                                  className="text-blue-600 hover:text-blue-800"
+                                                  title="Edit"
+                                                >
+                                                  <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                  onClick={() => handleDeleteEquipment(eq.id)}
+                                                  className="text-red-600 hover:text-red-800"
+                                                  title="Delete"
+                                                >
+                                                  <Trash2 className="w-4 h-4" />
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Summary Stats */}
+                            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="bg-teal-50 p-3 rounded-lg">
+                                <p className="text-xs text-teal-600 font-medium">Total Equipment</p>
+                                <p className="text-2xl font-bold text-teal-700">{equipment.length}</p>
+                              </div>
+                              <div className="bg-green-50 p-3 rounded-lg">
+                                <p className="text-xs text-green-600 font-medium">Active</p>
+                                <p className="text-2xl font-bold text-green-700">
+                                  {equipment.filter(t => t.status === 'active').length}
+                                </p>
+                              </div>
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <p className="text-xs text-gray-600 font-medium">Inactive</p>
+                                <p className="text-2xl font-bold text-gray-700">
+                                  {equipment.filter(t => t.status === 'inactive').length}
+                                </p>
+                              </div>
+                              <div className="bg-purple-50 p-3 rounded-lg">
+                                <p className="text-xs text-purple-600 font-medium">Sub-Categories</p>
+                                <p className="text-2xl font-bold text-purple-700">
+                                  {[...new Set(equipment.map(t => t.sub_category))].length}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Close Button */}
+                            <div className="mt-6 flex justify-end">
+                              <button
+                                onClick={() => {
+                                  setShowEquipmentModal(false);
+                                  setError('');
+                                  setEditingEquipment(null);
+                                  setNewEquipment({
+                                    name: '',
+                                    sub_category: '',
+                                    department: 'Facility',
+                                    description: '',
+                                    status: 'active'
+                                  });
+                                }}
+                                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                              >
+                                Close
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
     </div>
   );
 };

@@ -68,22 +68,6 @@ const JohnnyCMS = () => {
     });
     const [editingAssetTag, setEditingAssetTag] = useState(null);
 
-  const rcaOptions = [
-    'Technical Issue',
-    'User Error',
-    'Hardware Failure',
-    'Software Bug',
-    'Network Problem',
-    'Configuration Error',
-    'Facility Required',
-    'Third Party Issue',
-    'Power Failure',
-    'Environmental Factor',
-    'Training Gap',
-    'Process Issue',
-    'Other'
-  ];
-
   const [newComplaint, setNewComplaint] = useState({
     department: 'IT',
     category: '',
@@ -118,6 +102,21 @@ const JohnnyCMS = () => {
     sub_category: 'all',
     status: 'all'
   });
+  // RCA Options States (add after equipment states)
+const [rcaOptions, setRcaOptions] = useState([]);
+const [filteredRcaOptions, setFilteredRcaOptions] = useState([]);
+const [showRcaModal, setShowRcaModal] = useState(false);
+const [newRca, setNewRca] = useState({
+  rca_name: '',
+  department: 'IT',
+  description: '',
+  status: 'active'
+});
+const [rcaFilter, setRcaFilter] = useState({
+  department: 'all',
+  status: 'all'
+});
+const [editingRca, setEditingRca] = useState(null);
   const [editingEquipment, setEditingEquipment] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -252,6 +251,7 @@ const JohnnyCMS = () => {
       loadFeatures();
       loadAssetTags();
       loadEquipment();
+      loadRcaOptions(); 
       loadCurrentUserFeatures();
       if (currentUser?.role === 'admin') {
         loadUsers();
@@ -717,6 +717,137 @@ const JohnnyCMS = () => {
                 setLoading(false);
               }
             };
+                            // Load RCA Options from Database
+                const loadRcaOptions = async () => {
+                  try {
+                    console.log('Loading RCA options...'); // Debug
+                    
+                    const { data, error } = await supabase
+                      .from('rca_options')
+                      .select('*')
+                      .eq('status', 'active')
+                      .order('rca_name', { ascending: true });
+                    
+                    if (error) throw error;
+                    
+                    console.log('RCA options loaded:', data); // Debug
+                    setRcaOptions(data || []);
+                  } catch (err) {
+                    console.error('Error loading RCA options:', err);
+                    setRcaOptions([]);
+                  }
+                };
+
+                // Filter RCA Options by Department
+                const filterRcaByDepartment = (department) => {
+                  if (!department) {
+                    setFilteredRcaOptions([]);
+                    return;
+                  }
+                  
+                  console.log('Filtering RCA by department:', department); // Debug
+                  console.log('Available RCA options:', rcaOptions); // Debug
+                  
+                  const filtered = rcaOptions.filter(rca => rca.department === department);
+                  
+                  console.log('Filtered RCA options:', filtered); // Debug
+                  
+                  setFilteredRcaOptions(filtered);
+                };
+
+                // Add or Update RCA Option
+                const handleAddRca = async () => {
+                  if (!newRca.rca_name || !newRca.department) {
+                    setError('RCA name and department are required');
+                    return;
+                  }
+
+                  try {
+                    setLoading(true);
+                    setError('');
+                    
+                    if (editingRca) {
+                      // Update existing RCA
+                      const { error } = await supabase
+                        .from('rca_options')
+                        .update({
+                          rca_name: newRca.rca_name,
+                          department: newRca.department,
+                          description: newRca.description,
+                          status: newRca.status,
+                          updated_at: new Date().toISOString()
+                        })
+                        .eq('id', editingRca.id);
+                      
+                      if (error) throw error;
+                      alert('RCA option updated successfully!');
+                    } else {
+                      // Add new RCA
+                      const { error } = await supabase
+                        .from('rca_options')
+                        .insert([{
+                          ...newRca,
+                          created_by: currentUser?.username
+                        }]);
+                      
+                      if (error) throw error;
+                      alert('RCA option added successfully!');
+                    }
+                    
+                    await loadRcaOptions();
+                    setNewRca({
+                      rca_name: '',
+                      department: 'IT',
+                      description: '',
+                      status: 'active'
+                    });
+                    setEditingRca(null);
+                  } catch (err) {
+                    console.error('Error saving RCA option:', err);
+                    setError('Failed to save RCA option: ' + err.message);
+                  } finally {
+                    setLoading(false);
+                  }
+                };
+
+                // Edit RCA Option
+                const handleEditRca = (rca) => {
+                  setEditingRca(rca);
+                  setNewRca({
+                    rca_name: rca.rca_name,
+                    department: rca.department,
+                    description: rca.description || '',
+                    status: rca.status
+                  });
+                  // Scroll to top of modal
+                  const modalElement = document.querySelector('.overflow-y-auto');
+                  if (modalElement) {
+                    modalElement.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                };
+
+                // Delete RCA Option
+                const handleDeleteRca = async (rcaId) => {
+                  if (!window.confirm('Are you sure you want to delete this RCA option?')) return;
+
+                  try {
+                    setLoading(true);
+                    const { error } = await supabase
+                      .from('rca_options')
+                      .delete()
+                      .eq('id', rcaId);
+                    
+                    if (error) throw error;
+                    
+                    await loadRcaOptions();
+                    alert('RCA option deleted successfully!');
+                  } catch (err) {
+                    console.error('Error deleting RCA option:', err);
+                    setError('Failed to delete RCA option');
+                  } finally {
+                    setLoading(false);
+                  }
+                };
 
 
   const getSubCategoriesByCategory = (categoryId) => {
@@ -943,46 +1074,51 @@ const JohnnyCMS = () => {
   }
 };
 
-  const handleStatusChange = async (complaintId, newStatus) => {
-    const currentComplaint = complaints.find(c => c.id === complaintId);
-    const currentStatus = currentComplaint?.status;
+      const handleStatusChange = async (complaintId, newStatus) => {
+      const currentComplaint = complaints.find(c => c.id === complaintId);
+      const currentStatus = currentComplaint?.status;
 
-    // If changing to Parked or Pending, show remarks modal
-    if ((newStatus === 'Parking' || newStatus === 'Pending') && currentStatus === 'Open') {
-      setComplaintRemarkData({
-        complaintId: complaintId,
-        newStatus: newStatus,
-        remarks: ''
-      });
-      setShowComplaintRemarkModal(true);
-      return;
-    }
+      // If changing to Parked or Pending, show remarks modal
+      if ((newStatus === 'Parking' || newStatus === 'Pending') && currentStatus === 'Open') {
+        setComplaintRemarkData({
+          complaintId: complaintId,
+          newStatus: newStatus,
+          remarks: ''
+        });
+        setShowComplaintRemarkModal(true);
+        return;
+      }
 
-    // If changing to Resolved, show RCA modal
-    if (newStatus === 'Resolved' && ['Open', 'Parking', 'Pending'].includes(currentStatus)) {
-      setComplaintRCAData({
-        complaintId: complaintId,
-        rca: '',
-        remarks: ''
-      });
-      setShowComplaintRCAModal(true);
-      return;
-    }
+      // If changing to Resolved, show RCA modal
+      if (newStatus === 'Resolved' && ['Open', 'Parking', 'Pending'].includes(currentStatus)) {
+        // Filter RCA options by department
+        if (currentComplaint?.department) {
+          filterRcaByDepartment(currentComplaint.department);
+        }
+        
+        setComplaintRCAData({
+          complaintId: complaintId,
+          rca: '',
+          remarks: ''
+        });
+        setShowComplaintRCAModal(true);
+        return;
+      }
 
-    // Otherwise, update directly
-    try {
-      const { error } = await supabase
-        .from('complaints')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', complaintId);
+      // Otherwise, update directly
+      try {
+        const { error } = await supabase
+          .from('complaints')
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', complaintId);
 
-      if (error) throw error;
-      await loadComplaints();
-    } catch (err) {
-      console.error('Error updating status:', err);
-      setError('Failed to update status');
-    }
-  };
+        if (error) throw error;
+        await loadComplaints();
+      } catch (err) {
+        console.error('Error updating status:', err);
+        setError('Failed to update status');
+      }
+    };
 
   const handleComplaintRemarkSubmit = async () => {
     if (!complaintRemarkData.remarks.trim()) {
@@ -2654,6 +2790,13 @@ This report was generated from Johnny & Jugnu CMS.
                       <Package className="w-5 h-5 mr-2" />
                       Equipment
                     </button>
+                    <button
+                      onClick={() => setShowRcaModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-lg hover:from-pink-600 hover:to-rose-700 transition shadow-md flex items-center"
+                    >
+                      <AlertCircle className="w-5 h-5 mr-2" />
+                      RCA Options
+                    </button>
                     
                     <button
                       onClick={() => setShowAssetTagModal(true)}
@@ -3850,101 +3993,123 @@ This report was generated from Johnny & Jugnu CMS.
           </div>
         )}
 
-        {/* COMPLAINT RCA MODAL (for Resolved status) */}
-        {showComplaintRCAModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-800">Resolve Complaint</h3>
-                <button
-                  onClick={() => {
-                    setShowComplaintRCAModal(false);
-                    setComplaintRCAData({ complaintId: null, rca: '', remarks: '' });
-                    setError('');
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
+                            {/* COMPLAINT RCA MODAL (for Resolved status) */}
+                    {showComplaintRCAModal && (
+                      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
+                          <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-800">Resolve Complaint</h3>
+                            <button
+                              onClick={() => {
+                                setShowComplaintRCAModal(false);
+                                setComplaintRCAData({ complaintId: null, rca: '', remarks: '' });
+                                setError('');
+                              }}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <X className="w-6 h-6" />
+                            </button>
+                          </div>
 
-              <div className="mb-6 space-y-4">
-                <div className="bg-green-50 border-l-4 border-green-500 p-4">
-                  <p className="text-sm text-green-800">
-                    <strong>Resolving Complaint</strong>
-                  </p>
-                  <p className="text-xs text-green-600 mt-1">
-                    Please select the Root Cause Analysis (RCA) before marking as resolved.
-                  </p>
-                </div>
+                          <div className="mb-6 space-y-4">
+                            <div className="bg-green-50 border-l-4 border-green-500 p-4">
+                              <p className="text-sm text-green-800">
+                                <strong>Resolving Complaint</strong>
+                              </p>
+                              <p className="text-xs text-green-600 mt-1">
+                                Department: <strong>{complaints.find(c => c.id === complaintRCAData.complaintId)?.department || 'N/A'}</strong>
+                              </p>
+                              <p className="text-xs text-green-600">
+                                Please select the Root Cause Analysis (RCA) for this {complaints.find(c => c.id === complaintRCAData.complaintId)?.department} complaint.
+                              </p>
+                            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Root Cause Analysis (RCA) *
-                  </label>
-                  <select
-                    value={complaintRCAData.rca}
-                    onChange={(e) => setComplaintRCAData({ ...complaintRCAData, rca: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                    disabled={loading}
-                  >
-                    <option value="">Select RCA...</option>
-                    {rcaOptions.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Root Cause Analysis (RCA) *
+                              </label>
+                              <select
+                                value={complaintRCAData.rca}
+                                onChange={(e) => setComplaintRCAData({ ...complaintRCAData, rca: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                disabled={loading}
+                                onFocus={() => {
+                                  // Filter RCA options when dropdown is focused
+                                  const complaint = complaints.find(c => c.id === complaintRCAData.complaintId);
+                                  if (complaint?.department) {
+                                    filterRcaByDepartment(complaint.department);
+                                  }
+                                }}
+                              >
+                                <option value="">Select RCA...</option>
+                                {filteredRcaOptions.length > 0 ? (
+                                  filteredRcaOptions.map((option) => (
+                                    <option key={option.id} value={option.rca_name}>
+                                      {option.rca_name}
+                                      {option.description ? ` - ${option.description}` : ''}
+                                    </option>
+                                  ))
+                                ) : (
+                                  <option value="" disabled>No RCA options available for this department</option>
+                                )}
+                              </select>
+                              {filteredRcaOptions.length === 0 && (
+                                <p className="text-xs text-orange-600 mt-1">
+                                  No RCA options configured for this department. Please contact admin.
+                                </p>
+                              )}
+                            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Resolution Remarks (Optional)
-                  </label>
-                  <textarea
-                    value={complaintRCAData.remarks}
-                    onChange={(e) => setComplaintRCAData({ ...complaintRCAData, remarks: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none h-24 resize-none"
-                    placeholder="Add any additional details about the resolution..."
-                    disabled={loading}
-                  />
-                </div>
-              </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Resolution Remarks (Optional)
+                              </label>
+                              <textarea
+                                value={complaintRCAData.remarks}
+                                onChange={(e) => setComplaintRCAData({ ...complaintRCAData, remarks: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none h-24 resize-none"
+                                placeholder="Add any additional details about the resolution..."
+                                disabled={loading}
+                              />
+                            </div>
+                          </div>
 
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
+                          {error && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-sm text-red-600">{error}</p>
+                            </div>
+                          )}
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowComplaintRCAModal(false);
-                    setComplaintRCAData({ complaintId: null, rca: '', remarks: '' });
-                    setError('');
-                  }}
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleComplaintRCASubmit}
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center"
-                >
-                  {loading ? (
-                    <Loader className="animate-spin w-5 h-5" />
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Resolve Complaint
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => {
+                                setShowComplaintRCAModal(false);
+                                setComplaintRCAData({ complaintId: null, rca: '', remarks: '' });
+                                setError('');
+                              }}
+                              disabled={loading}
+                              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleComplaintRCASubmit}
+                              disabled={loading}
+                              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center"
+                            >
+                              {loading ? (
+                                <Loader className="animate-spin w-5 h-5" />
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Resolve Complaint
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
         {/* USER MODAL */}
         {showUserModal && (
@@ -5453,6 +5618,395 @@ This report was generated from Johnny & Jugnu CMS.
                           </div>
                         </div>
                       )}
+
+                      {/* RCA OPTIONS MANAGEMENT MODAL */}
+            {showRcaModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-gray-800">
+                      <AlertCircle className="inline w-5 h-5 mr-2" />
+                      RCA (Root Cause Analysis) Options Management
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setShowRcaModal(false);
+                        setError('');
+                        setEditingRca(null);
+                        setNewRca({
+                          rca_name: '',
+                          department: 'IT',
+                          description: '',
+                          status: 'active'
+                        });
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  {/* Add New RCA Form */}
+                  <div className="bg-gradient-to-r from-pink-50 to-rose-50 p-6 rounded-xl mb-6 border border-pink-200">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <Plus className="w-5 h-5 mr-2 text-pink-600" />
+                      {editingRca ? 'Edit RCA Option' : 'Add New RCA Option'}
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      {/* RCA Name */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          RCA Name *
+                          <span className="text-xs text-gray-500 ml-2">(e.g., Hardware Failure)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newRca.rca_name}
+                          onChange={(e) => setNewRca({...newRca, rca_name: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
+                          placeholder="e.g., Hardware Failure, Wear and Tear"
+                        />
+                      </div>
+
+                      {/* Department Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Department *
+                          <span className="text-xs text-gray-500 ml-2">(Assign to department)</span>
+                        </label>
+                        <select
+                          value={newRca.department}
+                          onChange={(e) => setNewRca({...newRca, department: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
+                        >
+                          <option value="IT">IT</option>
+                          <option value="O">O</option>
+                          <option value="Facility">Facility</option>
+                        </select>
+                      </div>
+
+                      {/* Status */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Status
+                        </label>
+                        <select
+                          value={newRca.status}
+                          onChange={(e) => setNewRca({...newRca, status: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
+                        >
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      {/* Description */}
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                        <span className="text-xs text-gray-500 ml-2">(Optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newRca.description}
+                        onChange={(e) => setNewRca({...newRca, description: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
+                        placeholder="e.g., Physical hardware component failed"
+                      />
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setNewRca({
+                            rca_name: '',
+                            department: 'IT',
+                            description: '',
+                            status: 'active'
+                          });
+                          setEditingRca(null);
+                        }}
+                        className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                      >
+                        Clear Form
+                      </button>
+                      <button
+                        onClick={handleAddRca}
+                        disabled={loading}
+                        className="flex-1 px-6 py-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-lg hover:from-pink-600 hover:to-rose-700 transition flex items-center justify-center shadow-md"
+                      >
+                        {loading ? (
+                          <Loader className="animate-spin w-5 h-5" />
+                        ) : (
+                          <>
+                            {editingRca ? <Edit className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+                            {editingRca ? 'Update RCA Option' : 'Add RCA Option'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Filter Section */}
+                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Filter RCA Options</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Department</label>
+                        <select
+                          value={rcaFilter.department}
+                          onChange={(e) => setRcaFilter({...rcaFilter, department: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-sm"
+                        >
+                          <option value="all">All Departments</option>
+                          <option value="IT">IT</option>
+                          <option value="O">O</option>
+                          <option value="Facility">Facility</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Status</label>
+                        <select
+                          value={rcaFilter.status}
+                          onChange={(e) => setRcaFilter({...rcaFilter, status: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-sm"
+                        >
+                          <option value="all">All Status</option>
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Existing RCA Options List */}
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-sm font-semibold text-gray-700">
+                        RCA Options List 
+                        <span className="ml-2 text-pink-600">
+                          ({rcaOptions.filter(rca => {
+                            const matchesDept = rcaFilter.department === 'all' || rca.department === rcaFilter.department;
+                            const matchesStatus = rcaFilter.status === 'all' || rca.status === rcaFilter.status;
+                            return matchesDept && matchesStatus;
+                          }).length} of {rcaOptions.length})
+                        </span>
+                      </h4>
+                      <button
+                        onClick={() => setRcaFilter({ department: 'all', status: 'all' })}
+                        className="text-xs text-pink-600 hover:text-pink-700 font-medium"
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+
+                    {rcaOptions.length === 0 ? (
+                      <div className="text-center py-12 bg-gray-50 rounded-lg">
+                        <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                        <p className="text-gray-500">No RCA options found</p>
+                        <p className="text-sm text-gray-400 mt-1">Add your first RCA option above</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {/* IT Department RCA */}
+                        {rcaOptions.filter(rca => {
+                          const matchesDept = rcaFilter.department === 'all' || rca.department === rcaFilter.department;
+                          const matchesStatus = rcaFilter.status === 'all' || rca.status === rcaFilter.status;
+                          return matchesDept && matchesStatus && rca.department === 'IT';
+                        }).length > 0 && (
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            <h5 className="text-sm font-semibold text-blue-700 mb-3 flex items-center">
+                              <span className="bg-blue-500 text-white px-2 py-1 rounded mr-2">IT</span>
+                              {rcaOptions.filter(r => r.department === 'IT').length} RCA Options
+                            </h5>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {rcaOptions
+                                .filter(rca => {
+                                  const matchesDept = rcaFilter.department === 'all' || rca.department === rcaFilter.department;
+                                  const matchesStatus = rcaFilter.status === 'all' || rca.status === rcaFilter.status;
+                                  return matchesDept && matchesStatus && rca.department === 'IT';
+                                })
+                                .map((rca) => (
+                                  <div key={rca.id} className="border border-blue-200 bg-white rounded-lg p-3 flex justify-between items-center hover:border-blue-300 transition">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-gray-800">{rca.rca_name}</p>
+                                      {rca.description && (
+                                        <p className="text-xs text-gray-500 mt-1">{rca.description}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2 ml-2">
+                                      <button
+                                        onClick={() => handleEditRca(rca)}
+                                        className="text-blue-600 hover:text-blue-800"
+                                        title="Edit"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteRca(rca.id)}
+                                        className="text-red-600 hover:text-red-800"
+                                        title="Delete"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Facility Department RCA */}
+                        {rcaOptions.filter(rca => {
+                          const matchesDept = rcaFilter.department === 'all' || rca.department === rcaFilter.department;
+                          const matchesStatus = rcaFilter.status === 'all' || rca.status === rcaFilter.status;
+                          return matchesDept && matchesStatus && rca.department === 'Facility';
+                        }).length > 0 && (
+                          <div className="bg-purple-50 p-4 rounded-lg">
+                            <h5 className="text-sm font-semibold text-purple-700 mb-3 flex items-center">
+                              <span className="bg-purple-500 text-white px-2 py-1 rounded mr-2">Facility</span>
+                              {rcaOptions.filter(r => r.department === 'Facility').length} RCA Options
+                            </h5>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {rcaOptions
+                                .filter(rca => {
+                                  const matchesDept = rcaFilter.department === 'all' || rca.department === rcaFilter.department;
+                                  const matchesStatus = rcaFilter.status === 'all' || rca.status === rcaFilter.status;
+                                  return matchesDept && matchesStatus && rca.department === 'Facility';
+                                })
+                                .map((rca) => (
+                                  <div key={rca.id} className="border border-purple-200 bg-white rounded-lg p-3 flex justify-between items-center hover:border-purple-300 transition">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-gray-800">{rca.rca_name}</p>
+                                      {rca.description && (
+                                        <p className="text-xs text-gray-500 mt-1">{rca.description}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2 ml-2">
+                                      <button
+                                        onClick={() => handleEditRca(rca)}
+                                        className="text-blue-600 hover:text-blue-800"
+                                        title="Edit"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteRca(rca.id)}
+                                        className="text-red-600 hover:text-red-800"
+                                        title="Delete"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* O Department RCA */}
+                        {rcaOptions.filter(rca => {
+                          const matchesDept = rcaFilter.department === 'all' || rca.department === rcaFilter.department;
+                          const matchesStatus = rcaFilter.status === 'all' || rca.status === rcaFilter.status;
+                          return matchesDept && matchesStatus && rca.department === 'O';
+                        }).length > 0 && (
+                          <div className="bg-green-50 p-4 rounded-lg">
+                            <h5 className="text-sm font-semibold text-green-700 mb-3 flex items-center">
+                              <span className="bg-green-500 text-white px-2 py-1 rounded mr-2">O</span>
+                              {rcaOptions.filter(r => r.department === 'O').length} RCA Options
+                            </h5>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {rcaOptions
+                                .filter(rca => {
+                                  const matchesDept = rcaFilter.department === 'all' || rca.department === rcaFilter.department;
+                                  const matchesStatus = rcaFilter.status === 'all' || rca.status === rcaFilter.status;
+                                  return matchesDept && matchesStatus && rca.department === 'O';
+                                })
+                                .map((rca) => (
+                                  <div key={rca.id} className="border border-green-200 bg-white rounded-lg p-3 flex justify-between items-center hover:border-green-300 transition">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-gray-800">{rca.rca_name}</p>
+                                      {rca.description && (
+                                        <p className="text-xs text-gray-500 mt-1">{rca.description}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2 ml-2">
+                                      <button
+                                        onClick={() => handleEditRca(rca)}
+                                        className="text-blue-600 hover:text-blue-800"
+                                        title="Edit"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteRca(rca.id)}
+                                        className="text-red-600 hover:text-red-800"
+                                        title="Delete"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Summary Stats */}
+                  <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-pink-50 p-3 rounded-lg">
+                      <p className="text-xs text-pink-600 font-medium">Total RCA</p>
+                      <p className="text-2xl font-bold text-pink-700">{rcaOptions.length}</p>
+                    </div>
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-xs text-blue-600 font-medium">IT</p>
+                      <p className="text-2xl font-bold text-blue-700">
+                        {rcaOptions.filter(r => r.department === 'IT').length}
+                      </p>
+                    </div>
+                    <div className="bg-purple-50 p-3 rounded-lg">
+                      <p className="text-xs text-purple-600 font-medium">Facility</p>
+                      <p className="text-2xl font-bold text-purple-700">
+                        {rcaOptions.filter(r => r.department === 'Facility').length}
+                      </p>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="text-xs text-green-600 font-medium">O</p>
+                      <p className="text-2xl font-bold text-green-700">
+                        {rcaOptions.filter(r => r.department === 'O').length}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Close Button */}
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      onClick={() => {
+                        setShowRcaModal(false);
+                        setError('');
+                        setEditingRca(null);
+                        setNewRca({
+                          rca_name: '',
+                          department: 'IT',
+                          description: '',
+                          status: 'active'
+                        });
+                      }}
+                      className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
     </div>
   );
 };
